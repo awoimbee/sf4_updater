@@ -24,13 +24,17 @@ fn main() {
     let project_root = arg_matches.value_of("PROJECT_FD").unwrap();
     let project_conf = format!("{}/app/config", project_root);
     let project_srcs = format!("{}/src/Meero", project_root);
+    let symfony_srcs = format!("{}/vendor", project_root);
 
     let mut dealiaser = Dealiaser::new();
     let mut php = php::Php::new();
 
     f_find::f_find(&project_conf, ".yml", |s| dealiaser.clone().add_from_yml(s));
     f_find::f_find(&project_srcs, ".yml", |s| dealiaser.clone().add_from_yml(s));
+    f_find::f_find(&symfony_srcs, ".php", |s| php.clone().add_from_php(s));
     f_find::f_find(&project_srcs, ".php", |s| php.clone().add_from_php(s));
 
-    // println!("{:?}", dealiaser);
+    php.rm_get("");
+    // println!("{:?}\n\n\n\n", dealiaser);
+    // println!("{:?}", php);
 }

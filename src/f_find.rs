@@ -25,9 +25,6 @@ pub fn f_find(root: &str, ends_with: &str, mut callback: impl FnMut(&str) + Clon
     };
     for entry in entries {
         let entry = entry.unwrap().path().to_str().unwrap().to_owned();
-        if entry.contains("translation") || entry.contains("vendor") {
-            continue;
-        }
         f_find(&entry, ends_with, callback.clone());
     }
 }
