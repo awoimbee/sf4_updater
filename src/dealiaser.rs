@@ -23,7 +23,7 @@ impl Dealiaser {
         c.insert(alias.to_owned(), class.to_owned());
     }
 
-    pub fn dealias(&mut self, alias: &str) -> Option<String> {
+    pub fn dealias(&self, alias: &str) -> Option<String> {
         let c = self.classes.read().unwrap();
         match c.get(alias) {
             Some(c) => Some(c.to_owned()),
@@ -62,6 +62,7 @@ impl Dealiaser {
                 true => (s_name, s_alias),
                 false => (s_alias, s_name),
             };
+            // println!("Dealiaser: add {} => {}", pointed, namespaced);
             alias_map.insert(pointed.to_owned(), namespaced.to_owned());
         }
         drop(alias_map);

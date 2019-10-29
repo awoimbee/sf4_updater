@@ -2,26 +2,39 @@ use regex::Regex;
 use std::fs::File;
 use std::io::prelude::*;
 
-use crate::php::{Php,Class};
+use crate::php::resolve_namespace::resolve_namespace;
+use crate::php::{Class, Php};
+use crate::php::{RE_CLASS, RE_CONSTRUCT, RE_GET, RE_NAMESPACE, RE_NO_CONSTRUCT, RE_USE};
 
 impl Php {
-    pub fn add_from_php(&mut self, file_path: &str) {
-        lazy_static! {
-            static ref RE_CLASS: Regex = // .get(1): class; .get(3): parent;
-                Regex::new(r"\nclass ([^ \n]*)( extends ([^ \n]*))?").unwrap();
-            static ref RE_NAMESPACE: Regex = // .get(1): namespace;
-                Regex::new(r"\nnamespace ([^ ;]*);\n").unwrap();
-            static ref RE_USE: Regex = // .get(1): real_class_name;  .get(3): as_alias;
-                Regex::new(r"\nuse ([^ ;]*)( as ([^ ;]*))?;").unwrap();
+    /// TODO
+    // pub fn add_from_class_name(&mut self, full_name: &str, root_dir: &str) {
+    // 	let path = full_name.split("\\");
+    // 	let test = path.
+    // }
+
+    /// Returns class full name & Class
+    fn extract_php(&self, php: &str, path: String) -> Option<(String, Class)> {
+        let mut class = Class::new();
+
+        if let Some(match_) = RE_CONSTRUCT.find(&php) {
+            class.idx_construct_start = match_.start();
+            class.has_constructor = true;
+        } else if let Some(match_) = RE_NO_CONSTRUCT.find(&php) {
+            class.idx_construct_start = match_.start();
+            class.has_constructor = false;
+        }
+        if let Some(_) = RE_GET.find(&php) {
+            class.has_get = true;
         }
 
-        let mut file = File::open(file_path).unwrap(); // check err
-        let mut contents = String::new();
-        file.read_to_string(&mut contents).unwrap_or(0);
+        class.idx_construct_start = match RE_CONSTRUCT.find(&php) {
+            Some(match_) => match_.start(),
+            None => 0,
+        };
 
-        let mut class = Class::new();
         /* catch all `use` statements */
-        for cap_use in RE_USE.captures_iter(&contents) {
+        for cap_use in RE_USE.captures_iter(&php) {
             let use_nspace = &cap_use[1];
             let use_name = match cap_use.get(3) {
                 Some(alias) => alias.as_str(),
@@ -30,49 +43,95 @@ impl Php {
                     &use_nspace[i..]
                 }
             };
-            class.uses.insert(use_name.to_owned(), use_nspace.to_owned());
+            class.idx_use_end = cap_use.get(0).unwrap().end();
+            class
+                .uses
+                .insert(use_name.to_owned(), use_nspace.to_owned());
         }
 
-        let namespace = {
-            let n = match RE_NAMESPACE.captures(&contents) {
+        let class_nspace = {
+            let n = match RE_NAMESPACE.captures(&php) {
                 Some(c) => c,
-                None => return
-            }.get(1).map_or("", |m| m.as_str()).to_owned();
-            if n.ends_with("\\") { n }
-            else { n + "\\" }
+                None => return None,
+            }
+            .get(1)
+            .map_or("", |m| m.as_str())
+            .to_owned();
+            if n.ends_with("\\") {
+                n
+            } else {
+                n + "\\"
+            }
         };
 
         let (class_full_name, class_parent_full_name) = {
-            let caps = match RE_CLASS.captures(&contents) {
+            let caps = match RE_CLASS.captures(&php) {
                 Some(c) => c,
-                None => return // not even a class name?
+                None => return None, // not even a class name?
             };
             /* get short names from regex */
-            let class_sname = caps.get(1).map_or("", |m| m.as_str());
-            let parent_sname = caps.get(3).map_or("", |m| m.as_str());
+            let class_sname = caps.get(2).map_or("", |m| m.as_str());
+            let parent_sname = caps.get(4).map_or("", |m| m.as_str());
             /* convert short names to full name (w/ namespace) */
-            let class_nspace = format!("{}{}", namespace, class_sname);
-            let parent_nspace = match class.uses.get(parent_sname) { // get parent from `use`
+            let class_nspace = format!("{}{}", class_nspace, class_sname);
+            let parent_nspace = match class.uses.get(parent_sname) {
                 Some(s) => Some(s.clone()),
                 None => {
-                    if parent_sname.is_empty() { None } // No parent
-                    else { Some(parent_sname.to_owned()) } // Unknown parent namespace
+                    if parent_sname.is_empty() {
+                        // No parent
+                        None
+                    } else {
+                        Some(parent_sname.to_owned()) // Unknown parent namespace
+                    }
                 }
             };
             (class_nspace, parent_nspace)
         };
         class.parent = class_parent_full_name;
-		class.path = file_path.to_owned();
-		/* Get write handle on the whole Php struct */
+        class.path = path.to_owned();
+        return Some((class_full_name, class));
+    }
+
+    pub fn add_from_php(&mut self, file_path: &str) {
+        let mut file = File::open(file_path).unwrap(); // check err
+        let mut contents = String::new();
+        file.read_to_string(&mut contents).unwrap_or(0);
+
+        let (class_full_name, class) = match self.extract_php(&contents, file_path.to_owned()) {
+            Some((class_fname, class)) => (class_fname, class),
+            None => return,
+        };
+        drop(contents);
+        self.add_class(file_path, &class_full_name, class);
+    }
+
+    fn add_class(&mut self, file_path: &str, class_full_name: &str, class: Class) {
         let mut classes_handle = self.classes.write().unwrap();
         /* Set curent class as child of parent class, if necessary */
-        if let Some(c_p_f_n) = &class.parent {
-            if let Some(c) = classes_handle.get_mut(c_p_f_n) {
-                c.children.push(class_full_name.clone());
+        if let Some(class_parent_fname) = &class.parent {
+            // if has parent
+            let parent = classes_handle.get_mut(class_parent_fname); // find parent in map
+            if parent.is_none() {
+                if let Some(parent_path) = resolve_namespace(class_parent_fname) {
+                    // resolve parent & add it
+                    // println!("Recursion! Class {:100} Parent {}", class_full_name, class_parent_fname);
+                    drop(classes_handle);
+                    self.add_from_php(&parent_path);
+                    let classes_handle = self.classes.read().unwrap();
+                    if classes_handle.get(class_parent_fname).is_some() {
+                        drop(classes_handle);
+                        self.add_class(file_path, class_full_name, class);
+                    }
+                    return;
+                } else {
+                    eprintln!("Class not found `{}` !", class_parent_fname);
+                }
+            } else if let Some(c) = classes_handle.get_mut(class_parent_fname) {
+                // bad
+                c.children.push(class_full_name.to_owned());
             }
         }
-
-        classes_handle.insert(class_full_name, class);
+        classes_handle.insert(class_full_name.to_owned(), class);
         drop(classes_handle);
     }
 }
