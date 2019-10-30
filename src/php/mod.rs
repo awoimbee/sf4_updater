@@ -4,9 +4,13 @@ use std::sync::Arc;
 use std::sync::Mutex;
 use std::sync::RwLock;
 
-mod extract_php;
-mod remove_get;
+mod class_extractor;
+mod php_parser;
+mod rm_get;
+mod rm_get_repository;
 pub mod resolve_namespace;
+
+// public function __construct\(([^)]*)\)[^{]*{
 
 lazy_static! {
     static ref RE_CLASS: Regex = // .get(2): class; .get(4): parent;
@@ -15,15 +19,19 @@ lazy_static! {
         Regex::new(r"\nnamespace ([^ ;]*);\n").unwrap();
     /// Captures the whole use group, don't use global matching on this one
     static ref RE_ALL_USE: Regex =
-        Regex::new(r"(\nuse[^;]*;)*").unwrap();
+        Regex::new(r"(?:\nuse[^;]*;)+").unwrap();
     static ref RE_USE: Regex = // .get(1): real_class_name;  .get(3): as_alias;
         Regex::new(r"\nuse ([^ ;]*)( as ([^ ;]*))?;").unwrap();
-    static ref RE_CONSTRUCT: Regex =
-        Regex::new(r"public function __construct\(").unwrap();
+    static ref RE_CONSTRUCT: Regex = // .get(0): 'pub... {'; .get(1): (*args*)
+        Regex::new(r"public function __construct\(([^)]*)\)[^{]*\{").unwrap();
     static ref RE_NO_CONSTRUCT: Regex =
         Regex::new(r"\n[ \t]*.*?function [^ (]*").unwrap();
     static ref RE_GET: Regex = // .get(0): $this->get; .get(1): class
         Regex::new(r"\$this->get\('(.*?)'\)").unwrap();
+    /// Only finds the getrepository that uses the 'alias' name
+    static ref RE_GETREPOSITORY: Regex = // .get(0): $this->get; .get(1): class
+        Regex::new(r"->getRepository\('(.*?)'\)").unwrap();
+
 }
 
 #[derive(Debug)]
@@ -32,10 +40,11 @@ struct Class {
     children: Vec<String>,
     parent: Option<String>,
     uses: HashMap<String, String>, // Name \ Class
-    idx_use_end: usize,
-    idx_construct_start: usize,
+    // idx_use_end: usize,
+    // idx_construct_start: usize,
     has_constructor: bool,
     has_get: bool,
+    has_get_repository: bool
 }
 
 #[derive(Debug, Clone)]
@@ -55,10 +64,11 @@ impl Class {
             children,
             parent,
             uses,
-            idx_use_end: 0,
-            idx_construct_start: 0,
+            // idx_use_end: 0,
+            // idx_construct_start: 0,
             has_constructor: false,
             has_get: false,
+            has_get_repository: false,
         }
     }
 }
@@ -71,10 +81,11 @@ impl Clone for Class {
             children: self.children.clone(),
             parent: self.parent.clone(),
             uses: self.uses.clone(),
-            idx_use_end: self.idx_use_end,
-            idx_construct_start: self.idx_construct_start,
+            // idx_use_end: self.idx_use_end,
+            // idx_construct_start: self.idx_construct_start,
             has_constructor: self.has_constructor,
             has_get: self.has_get,
+            has_get_repository: self.has_get
         }
     }
 }

@@ -4,7 +4,7 @@ use std::io::prelude::*;
 
 use crate::php::resolve_namespace::resolve_namespace;
 use crate::php::{Class, Php};
-use crate::php::{RE_CLASS, RE_CONSTRUCT, RE_GET, RE_NAMESPACE, RE_NO_CONSTRUCT, RE_USE};
+use crate::php::{RE_CLASS, RE_CONSTRUCT, RE_GET, RE_NAMESPACE, RE_NO_CONSTRUCT, RE_USE, RE_GETREPOSITORY};
 
 impl Php {
     /// TODO
@@ -18,21 +18,26 @@ impl Php {
         let mut class = Class::new();
 
         if let Some(match_) = RE_CONSTRUCT.find(&php) {
-            class.idx_construct_start = match_.start();
+            // class.idx_construct_start = match_.start();
             class.has_constructor = true;
         } else if let Some(match_) = RE_NO_CONSTRUCT.find(&php) {
-            class.idx_construct_start = match_.start();
+            // class.idx_construct_start = match_.start();
             class.has_constructor = false;
         }
         if let Some(_) = RE_GET.find(&php) {
             // println!("{} has get", path);
             class.has_get = true;
         }
+        if let Some(_) = RE_GETREPOSITORY.find(&php) {
+            // println!("{} has get", path);
+            class.has_get_repository = true;
+        }
 
-        class.idx_construct_start = match RE_CONSTRUCT.find(&php) {
-            Some(match_) => match_.start(),
-            None => 0,
-        };
+
+        // class.idx_construct_start = match RE_CONSTRUCT.find(&php) {
+        //     Some(match_) => match_.start(),
+        //     None => 0,
+        // };
 
         /* catch all `use` statements */
         for cap_use in RE_USE.captures_iter(&php) {
@@ -44,10 +49,8 @@ impl Php {
                     &use_nspace[i..]
                 }
             };
-            class.idx_use_end = cap_use.get(0).unwrap().end();
-            class
-                .uses
-                .insert(use_name.to_owned(), use_nspace.to_owned());
+            // class.idx_use_end = cap_use.get(0).unwrap().end();
+            class.uses.insert(use_name.to_owned(), use_nspace.to_owned());
         }
 
         let class_nspace = {
@@ -135,6 +138,7 @@ impl Php {
 
     fn add_class(&self, file_path: &str, class_full_name: &str, class: Class) {
         let has_get = class.has_get;
+        let has_get_repository = class.has_get_repository;
         /* Set curent class as child of parent class, if necessary */
         if let Some(_) = &class.parent {
             self.set_parent(file_path, class_full_name, &class);
@@ -144,7 +148,7 @@ impl Php {
         drop(classes_w);
 
         let work_dir: &str = &crate::WORK_DIR.read().unwrap();
-        if has_get && file_path.to_owned().starts_with(work_dir) {
+        if (has_get || has_get_repository) && file_path.to_owned().starts_with(work_dir) {
             // println!("PUSH to workstack");
             let mut workstack_w = self.work_stack.write().unwrap();
             workstack_w.push(class_full_name.to_owned());

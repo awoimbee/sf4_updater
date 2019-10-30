@@ -14,6 +14,13 @@ use std::sync::RwLock;
 static NAMESPACE_SEARCH_DIRS: &'static [&'static str] =
     &["/src/Meero/", "/vendor/", "/src/Meero/DataFixtures/"];
 
+static ENTITY_SEARCH_DIRS: &'static [(&'static str, &'static str)] = &[
+    ("MeeroApiBundle", "Meero\\ApiBundle\\Entity\\"),
+    ("MeeroMediaBundle", "Meero\\MediaBundle\\ntity\\"),
+    ("MeeroShootBundle", "Meero\\ShootBundle\\Entity\\"),
+    ("MeeroShowcaseBundle", "Meero\\ShowcaseBundle\\Entity\\")
+];
+
 lazy_static! {
     /// Don't ever try to .write() this !
     static ref PROJECT_ROOT: RwLock<String> = RwLock::new(String::new());
@@ -55,9 +62,6 @@ fn main() {
     f_find::f_find(&symfony_srcs, ".php", |s| php.clone().add_from_php(s));
     f_find::f_find(&project_srcs, ".php", |s| php.clone().add_from_php(s));
 
-    // php::resolve_namespace::resolve_namespace("tut");
-
-    php.rm_get(&dealiaser, work_dir as &str);
-    // println!("{:?}\n\n\n\n", dealiaser);
-    // println!("{:?}", php);
+    // php.rm_get(&dealiaser, work_dir as &str);
+    php.rm_get_repository();
 }
