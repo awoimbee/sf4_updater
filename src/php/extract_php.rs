@@ -25,6 +25,7 @@ impl Php {
             class.has_constructor = false;
         }
         if let Some(_) = RE_GET.find(&php) {
+            // println!("{} has get", path);
             class.has_get = true;
         }
 
@@ -101,37 +102,40 @@ impl Php {
             Some((class_fname, class)) => (class_fname, class),
             None => return,
         };
-        drop(contents);
         self.add_class(file_path, &class_full_name, class);
     }
 
     fn add_class(&mut self, file_path: &str, class_full_name: &str, class: Class) {
-        let mut classes_handle = self.classes.write().unwrap();
+        // println!("start add class {}", class_full_name);
+        let classes_r = self.classes_reader_factory.handle();
+
         /* Set curent class as child of parent class, if necessary */
         if let Some(class_parent_fname) = &class.parent {
-            // if has parent
-            let parent = classes_handle.get_mut(class_parent_fname); // find parent in map
+            let parent = classes_r.get_and(class_parent_fname, |par| {
+                    // println!("Got class parent, wait lock");
+                    let mut classes_w = self.classes_writer.lock().unwrap();
+                    let mut t = par[0].clone();
+                    t.children.push(class_full_name.to_owned());
+                    classes_w.update(class_parent_fname.to_owned(), t);
+                    // println!("Parent updated");
+                });
             if parent.is_none() {
                 if let Some(parent_path) = resolve_namespace(class_parent_fname) {
-                    // resolve parent & add it
-                    // println!("Recursion! Class {:100} Parent {}", class_full_name, class_parent_fname);
-                    drop(classes_handle);
+                    // println!("add from php {}", parent_path);
                     self.add_from_php(&parent_path);
-                    let classes_handle = self.classes.read().unwrap();
-                    if classes_handle.get(class_parent_fname).is_some() {
-                        drop(classes_handle);
+                    if classes_r.get_and(class_parent_fname, |par| ()).is_some() {
+                        // println!("add class {} {}", file_path, class_full_name);
                         self.add_class(file_path, class_full_name, class);
                     }
                     return;
                 } else {
-                    eprintln!("Class not found `{}` !", class_parent_fname);
+                    // println!("Parent class not found `{}` !", class_parent_fname);
                 }
-            } else if let Some(c) = classes_handle.get_mut(class_parent_fname) {
-                // bad
-                c.children.push(class_full_name.to_owned());
             }
         }
-        classes_handle.insert(class_full_name.to_owned(), class);
-        drop(classes_handle);
+        let mut classes_w = self.classes_writer.lock().unwrap();
+        classes_w.insert(class_full_name.to_owned(), class);
+        classes_w.refresh();
+        // println!("class added {}", class_full_name);
     }
 }

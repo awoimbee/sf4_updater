@@ -9,28 +9,36 @@ use crate::php::*;
 
 impl Php {
     pub fn rm_get(&mut self, dealiaser: &Dealiaser, work_dir: &str) {
+        // println!("Into rm_get !");
         // println!("{:?}", dealiaser);
-        let classes = self.classes.clone();
-        let php_handle = classes.read().unwrap(); //.get_mut().unwrap();
+        let classes_r = self.classes_reader_factory.handle();
+        // let php_handle = classes.read().unwrap(); //.get_mut().unwrap();
 
-        for (c_name, class) in php_handle.iter() {
+        classes_r.for_each(|class_name, class| {
+            // println!("Name {}", class_name);
+            let class = &class[0];
             if !class.path.starts_with(work_dir) || !class.has_get {
-                // println!("x '{}' != '{}'", work_dir, c_name);
-                continue;
+                // println!("x bad dir != '{}'", class.path);
+                return;
+            }
+            if !!class.has_get {
+                println!("x no get '{}'", class_name);
+                return;
             }
 
-            let test = &class.parent;
-            let pd = test.unwrap();
             if class.has_constructor
-            && class.parent.is_some()
-            && self.load_class(&class.parent.unwrap()).is_some() {
-
+                && class.parent.is_some()
+                && self.load_class(&class.parent.clone().unwrap()).is_some()
+            {
+                println!("Cannot update constructors & shit right now");
+                return;
             }
+
             let mut file = File::open(&class.path).unwrap(); // check err
             let mut contents = String::new();
             file.read_to_string(&mut contents).unwrap_or(0);
 
-            // println!("Class `{}`: {:?}", c_name, class);
+            println!("Class `{}`: {:?}", class_name, class);
 
             for get in RE_GET.captures_iter(&contents) {
                 let get_alias = &get[1];
@@ -44,13 +52,9 @@ impl Php {
                     }
                 };
 
-
-
-
                 println!("Class `{}`: {}", get_alias, get_namespaced);
                 // for cap_use in RE_USE.captures_iter(&contents) {
             }
-        }
+        });
     }
-
 }

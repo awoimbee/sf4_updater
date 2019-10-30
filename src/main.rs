@@ -52,7 +52,7 @@ fn main() {
     f_find::f_find(&symfony_srcs, ".php", |s| php.clone().add_from_php(s));
     f_find::f_find(&project_srcs, ".php", |s| php.clone().add_from_php(s));
 
-    php::resolve_namespace::resolve_namespace("tut");
+    // php::resolve_namespace::resolve_namespace("tut");
 
     php.rm_get(&dealiaser, work_dir);
     // println!("{:?}\n\n\n\n", dealiaser);
