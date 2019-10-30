@@ -10,13 +10,21 @@ use crate::php::*;
 impl Php {
     pub fn rm_get(&mut self, dealiaser: &Dealiaser, work_dir: &str) {
         // println!("{:?}", dealiaser);
-
-        let php_handle = self.classes.write().unwrap(); //.get_mut().unwrap();
+        let classes = self.classes.clone();
+        let php_handle = classes.read().unwrap(); //.get_mut().unwrap();
 
         for (c_name, class) in php_handle.iter() {
             if !class.path.starts_with(work_dir) || !class.has_get {
                 // println!("x '{}' != '{}'", work_dir, c_name);
                 continue;
+            }
+
+            let test = &class.parent;
+            let pd = test.unwrap();
+            if class.has_constructor
+            && class.parent.is_some()
+            && self.load_class(&class.parent.unwrap()).is_some() {
+
             }
             let mut file = File::open(&class.path).unwrap(); // check err
             let mut contents = String::new();
@@ -36,9 +44,13 @@ impl Php {
                     }
                 };
 
+
+
+
                 println!("Class `{}`: {}", get_alias, get_namespaced);
                 // for cap_use in RE_USE.captures_iter(&contents) {
             }
         }
     }
+
 }
