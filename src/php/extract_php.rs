@@ -93,7 +93,7 @@ impl Php {
         return Some((class_full_name, class));
     }
 
-    pub fn add_from_php(&mut self, file_path: &str) {
+    pub fn add_from_php(&self, file_path: &str) {
         let mut file = File::open(file_path).unwrap(); // check err
         let mut contents = String::new();
         file.read_to_string(&mut contents).unwrap_or(0);
@@ -105,37 +105,50 @@ impl Php {
         self.add_class(file_path, &class_full_name, class);
     }
 
-    fn add_class(&mut self, file_path: &str, class_full_name: &str, class: Class) {
-        // println!("start add class {}", class_full_name);
-        let classes_r = self.classes_reader_factory.handle();
+    fn set_parent(&self, file_path: &str, class_full_name: &str, class: &Class) {
+        let classes_r = self.classes.read().unwrap();
+        let parent_name = &class.parent.clone().unwrap(); // parent_name
+        let known_parent = classes_r.get(parent_name).is_some();
+        drop(classes_r);
 
-        /* Set curent class as child of parent class, if necessary */
-        if let Some(class_parent_fname) = &class.parent {
-            let parent = classes_r.get_and(class_parent_fname, |par| {
-                    // println!("Got class parent, wait lock");
-                    let mut classes_w = self.classes_writer.lock().unwrap();
-                    let mut t = par[0].clone();
-                    t.children.push(class_full_name.to_owned());
-                    classes_w.update(class_parent_fname.to_owned(), t);
-                    // println!("Parent updated");
-                });
-            if parent.is_none() {
-                if let Some(parent_path) = resolve_namespace(class_parent_fname) {
-                    // println!("add from php {}", parent_path);
-                    self.add_from_php(&parent_path);
-                    if classes_r.get_and(class_parent_fname, |par| ()).is_some() {
-                        // println!("add class {} {}", file_path, class_full_name);
-                        self.add_class(file_path, class_full_name, class);
-                    }
-                    return;
-                } else {
-                    // println!("Parent class not found `{}` !", class_parent_fname);
-                }
-            }
+        if known_parent {
+            let mut classes_w = self.classes.write().unwrap();
+            classes_w.get_mut(parent_name).unwrap().children.push(class_full_name.to_owned());
+            drop(classes_w);
+            return;
         }
-        let mut classes_w = self.classes_writer.lock().unwrap();
+
+        if let Some(parent_path) = resolve_namespace(parent_name) {
+            self.add_from_php(&parent_path);
+            // let classes_r = self.classes.read().unwrap();
+            let succesful_add = {
+                let classes_r = self.classes.read().unwrap();
+                classes_r.get(parent_name).is_some()
+            };
+            if succesful_add { // if add_from_php was succesful
+                self.set_parent(file_path, class_full_name, class); // retry add
+            }
+            return;
+        }
+
+    }
+
+    fn add_class(&self, file_path: &str, class_full_name: &str, class: Class) {
+        let has_get = class.has_get;
+        /* Set curent class as child of parent class, if necessary */
+        if let Some(_) = &class.parent {
+            self.set_parent(file_path, class_full_name, &class);
+        }
+        let mut classes_w = self.classes.write().unwrap();
         classes_w.insert(class_full_name.to_owned(), class);
-        classes_w.refresh();
+        drop(classes_w);
+
+        let work_dir: &str = &crate::WORK_DIR.read().unwrap();
+        if has_get && file_path.to_owned().starts_with(work_dir) {
+            // println!("PUSH to workstack");
+            let mut workstack_w = self.work_stack.write().unwrap();
+            workstack_w.push(class_full_name.to_owned());
+        }
         // println!("class added {}", class_full_name);
     }
 }

@@ -17,6 +17,7 @@ static NAMESPACE_SEARCH_DIRS: &'static [&'static str] =
 lazy_static! {
     /// Don't ever try to .write() this !
     static ref PROJECT_ROOT: RwLock<String> = RwLock::new(String::new());
+    static ref WORK_DIR: RwLock<String> = RwLock::new(String::new());
 }
 
 // TODO: parse XML config
@@ -32,13 +33,15 @@ fn main() {
     )
     .get_matches();
 
-    let mut proot = PROJECT_ROOT.write().unwrap();
-    proot.push_str(arg_matches.value_of("PROJECT_FD").unwrap());
-    drop(proot);
-
-    let project_root = PROJECT_ROOT.read().unwrap();
+    let project_root = {
+        PROJECT_ROOT.write().unwrap().push_str(arg_matches.value_of("PROJECT_FD").unwrap());
+        &PROJECT_ROOT.read().unwrap()
+    };
+    let work_dir = {
+        WORK_DIR.write().unwrap().push_str(arg_matches.value_of("WORK_DIR").unwrap());
+        &WORK_DIR.read().unwrap()
+    };
     let controllers_conf = arg_matches.value_of("CONTROLLERS_CONF_YML").unwrap();
-    let work_dir = arg_matches.value_of("WORK_DIR").unwrap();
 
     let project_conf = format!("{}/app/config", project_root);
     let project_srcs = format!("{}/src/Meero", project_root);
@@ -54,7 +57,7 @@ fn main() {
 
     // php::resolve_namespace::resolve_namespace("tut");
 
-    php.rm_get(&dealiaser, work_dir);
+    php.rm_get(&dealiaser, work_dir as &str);
     // println!("{:?}\n\n\n\n", dealiaser);
     // println!("{:?}", php);
 }

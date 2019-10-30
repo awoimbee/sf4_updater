@@ -13,6 +13,9 @@ lazy_static! {
         Regex::new(r"\n(abstract )?class ([^ \n]*)( extends ([^ \n]*))?").unwrap();
     static ref RE_NAMESPACE: Regex = // .get(1): namespace;
         Regex::new(r"\nnamespace ([^ ;]*);\n").unwrap();
+    /// Captures the whole use group, don't use global matching on this one
+    static ref RE_ALL_USE: Regex =
+        Regex::new(r"(\nuse[^;]*;)*").unwrap();
     static ref RE_USE: Regex = // .get(1): real_class_name;  .get(3): as_alias;
         Regex::new(r"\nuse ([^ ;]*)( as ([^ ;]*))?;").unwrap();
     static ref RE_CONSTRUCT: Regex =
@@ -35,11 +38,10 @@ struct Class {
     has_get: bool,
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct Php {
-    classes_writer: Arc<Mutex<evmap::WriteHandle<String, Class>>>,
-    classes_reader_factory: evmap::ReadHandleFactory<String, Class>,
-    // classes: Arc<RwLock<HashMap<String, Class>>>,
+    classes: Arc<RwLock<HashMap<String, Class>>>,
+    work_stack: Arc<RwLock<Vec<String>>>,
 }
 
 impl Class {
@@ -93,25 +95,19 @@ impl Eq for Class {}
 
 impl Php {
     pub fn new() -> Php {
-        let (classes_r, mut classes_w) = evmap::new::<String, Class>();
-        let classes_writer = Arc::new(Mutex::new(classes_w));
-        let classes_reader_factory = classes_r.factory();
-        classes_writer.lock().unwrap().refresh();
-
-        Php {
-            classes_writer,
-            classes_reader_factory,
-        }
+        let classes = Arc::new(RwLock::new(HashMap::new()));
+        let work_stack = Arc::new(RwLock::new(Vec::new()));
+        Php { classes, work_stack }
     }
 
-    pub fn load_class<'a>(&mut self, class_full_name: &str) -> Option<()> {
-        let mut classes_r = self.classes_reader_factory.handle();
+    pub fn load_class(&self, class_full_name: &str) -> Option<()> {
+        let classes_r = self.classes.read().unwrap();  //_reader_factory.handle();
 
-        let class = classes_r.get_and(class_full_name, |v| ());
+        let class = classes_r.get(class_full_name);
         if class.is_none() {
             if let Some(class_path) = resolve_namespace::resolve_namespace(class_full_name) {
                 self.add_from_php(&class_path);
-                if let Some(_parent) = classes_r.get_and(class_full_name, |r| ()) {
+                if let Some(_parent) = classes_r.get(class_full_name) {
                     return Some(());
                 }
             }
