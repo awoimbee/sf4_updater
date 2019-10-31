@@ -30,6 +30,8 @@ lazy_static! {
     /// Only finds the getrepository that uses the 'alias' name
     static ref RE_GETREPOSITORY: Regex = // .get(0): $this->get; .get(1): class
         Regex::new(r"->getRepository\('(.*?)'\)").unwrap();
+    static ref RE_GETREPOSITORY_ALIAS: Regex = // .get(0): $this->get; .get(1): class
+        Regex::new(r"->getRepository\('(.*?:.*?)'\)").unwrap();
 
 }
 

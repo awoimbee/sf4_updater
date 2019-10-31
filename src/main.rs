@@ -47,7 +47,7 @@ fn main() {
             .push_str(arg_matches.value_of("PROJECT_FD").unwrap());
         &PROJECT_ROOT.read().unwrap()
     };
-    let _work_dir = {
+    let work_dir = {
         WORK_DIR
             .write()
             .unwrap()
@@ -65,9 +65,12 @@ fn main() {
 
     f_find::f_find(&project_conf, ".yml", |s| dealiaser.clone().add_from_yml(s));
     f_find::f_find(&project_srcs, ".yml", |s| dealiaser.clone().add_from_yml(s));
-    f_find::f_find(&symfony_srcs, ".php", |s| php.clone().add_from_php(s));
-    f_find::f_find(&project_srcs, ".php", |s| php.clone().add_from_php(s));
+    f_find::f_find(&work_dir, ".php", |s| php.clone().add_from_php(s));
+    // f_find::f_find(&symfony_srcs, ".php", |s| php.clone().add_from_php(s));
+    // f_find::f_find(&project_srcs, ".php", |s| php.clone().add_from_php(s));
 
-    // php.rm_get(&dealiaser, work_dir as &str);
-    php.dealias_get_repository();
+    if false {
+        php.dealias_get_repository();
+    }
+    php.rm_get(&dealiaser);
 }

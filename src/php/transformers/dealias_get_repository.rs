@@ -8,9 +8,11 @@ use crate::php::transformers;
 
 impl php::Php {
     pub fn dealias_get_repository(&mut self) {
+        println!("dealias_get_repository");
         let pile_reader = self.has_get_repository_stack.read().unwrap();
 
         for class_name in pile_reader.iter() {
+            println!("\t{}", class_name);
             let class_mutex = self
                 .classes
                 .read()
@@ -29,7 +31,7 @@ impl php::Php {
                 _ => (),
             };
 
-            while let Some(getrepo_cap) = php::RE_GETREPOSITORY.captures(&contents) {
+            while let Some(getrepo_cap) = php::RE_GETREPOSITORY_ALIAS.captures(&contents) {
                 let repo_alias_cap = getrepo_cap.get(1).unwrap();
                 let repo_alias = repo_alias_cap.as_str();
 
@@ -63,7 +65,7 @@ impl php::Php {
 
                 contents = format!("{}{}{}", before_repo_alias, new_name, after_repo_alias);
             }
-			contents = transformers::rewrite_uses(contents, &class);
+            contents = transformers::rewrite_uses(contents, &class);
             transformers::write_file(&contents, &class.path);
         }
     }

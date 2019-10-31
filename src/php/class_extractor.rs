@@ -16,6 +16,7 @@ impl Php {
 
     /// Returns class full name & Class
     fn extract_php(&self, php: &str, path: String) -> Option<(String, Class)> {
+        println!("Extracting {}", &path);
         let mut class = Class::new();
 
         if let Some(_match) = php::RE_CONSTRUCT.find(&php) {
@@ -30,14 +31,13 @@ impl Php {
 
         /* catch all `use` statements */
         for cap_use in php::RE_USE.captures_iter(&php) {
-            let use_nspace = &cap_use[1];
+            let use_nspace = cap_use[1].to_owned();
             let use_name = match cap_use.get(3) {
-                Some(alias) => alias.as_str(),
-                None => php::class_name(&use_nspace),
+                Some(alias) => alias.as_str().to_owned(),
+                None => php::class_name(&use_nspace).to_owned(),
             };
-            class
-                .uses
-                .insert(use_name.to_owned(), use_nspace.to_owned());
+            println!("\tUSE: {:30} <=> {}", use_name, use_nspace); // ######################################
+            class.uses.insert(use_name, use_nspace);
         }
 
         let class_nspace = match php::RE_NAMESPACE.captures(&php) {
@@ -64,8 +64,7 @@ impl Php {
             let parent_nspace = match class.uses.get(parent_sname) {
                 Some(s) => Some(s.clone()),
                 None => {
-                    if parent_sname.is_empty() {
-                        // No parent
+                    if parent_sname.is_empty() { // No parent
                         None
                     } else {
                         Some(parent_sname.to_owned()) // Unknown parent namespace
@@ -74,6 +73,7 @@ impl Php {
             };
             (class_nspace, parent_nspace)
         };
+        println!("\tPARENT_FULL_NAME: {}", class_parent_full_name.as_ref().unwrap_or(&"".to_owned())); // ######################################
         class.parent = class_parent_full_name;
         class.path = path.to_owned();
         return Some((class_full_name, class));
@@ -129,6 +129,7 @@ impl Php {
         drop(classes_w);
         /* insert class in workstack if necessary */
         let work_dir: &str = &crate::WORK_DIR.read().unwrap();
+        // println!("check if {:50} inside {}", file_path, work_dir);
         if file_path.starts_with(work_dir) {
             if has_get {
                 let mut workstack_w = self.has_get_stack.write().unwrap();
