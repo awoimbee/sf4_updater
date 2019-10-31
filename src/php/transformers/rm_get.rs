@@ -34,7 +34,6 @@
 //             let mut contents = String::new();
 //             file.read_to_string(&mut contents).unwrap_or(0);
 
-
 //             let get_cap = RE_GET.captures_iter(&contents);
 
 //             for get in get_cap {

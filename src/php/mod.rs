@@ -6,9 +6,8 @@ use std::sync::RwLock;
 
 mod class_extractor;
 mod php_parser;
-mod rm_get;
-mod rm_get_repository;
 pub mod resolve_namespace;
+pub mod transformers;
 
 // public function __construct\(([^)]*)\)[^{]*{
 
@@ -44,13 +43,14 @@ struct Class {
     // idx_construct_start: usize,
     has_constructor: bool,
     has_get: bool,
-    has_get_repository: bool
+    has_get_repository: bool,
 }
 
 #[derive(Debug, Clone)]
 pub struct Php {
-    classes: Arc<RwLock<HashMap<String, Class>>>,
-    work_stack: Arc<RwLock<Vec<String>>>,
+    classes: Arc<RwLock<HashMap<String, Arc<Mutex<Class>>>>>,
+    has_get_stack: Arc<RwLock<Vec<String>>>,
+    has_get_repository_stack: Arc<RwLock<Vec<String>>>,
 }
 
 impl Class {
@@ -73,46 +73,51 @@ impl Class {
     }
 }
 
-impl Clone for Class {
-    #[inline]
-    fn clone(&self) -> Self {
-        Class {
-            path: self.path.clone(),
-            children: self.children.clone(),
-            parent: self.parent.clone(),
-            uses: self.uses.clone(),
-            // idx_use_end: self.idx_use_end,
-            // idx_construct_start: self.idx_construct_start,
-            has_constructor: self.has_constructor,
-            has_get: self.has_get,
-            has_get_repository: self.has_get
-        }
-    }
-}
+// impl Clone for Class {
+//     #[inline]
+//     fn clone(&self) -> Self {
+//         Class {
+//             path: self.path.clone(),
+//             children: self.children.clone(),
+//             parent: self.parent.clone(),
+//             uses: self.uses.clone(),
+//             // idx_use_end: self.idx_use_end,
+//             // idx_construct_start: self.idx_construct_start,
+//             has_constructor: self.has_constructor,
+//             has_get: self.has_get,
+//             has_get_repository: self.has_get
+//         }
+//     }
+// }
 
-impl evmap::ShallowCopy for Class {
-    #[inline]
-    unsafe fn shallow_copy(&mut self) -> Self {
-        self.clone()
-    }
-}
+// impl evmap::ShallowCopy for Class {
+//     #[inline]
+//     unsafe fn shallow_copy(&mut self) -> Self {
+//         self.clone()
+//     }
+// }
 
-impl PartialEq for Class {
-    fn eq(&self, other: &Self) -> bool {
-        self.path == other.path
-    }
-}
-impl Eq for Class {}
+// impl PartialEq for Class {
+//     fn eq(&self, other: &Self) -> bool {
+//         self.path == other.path
+//     }
+// }
+// impl Eq for Class {}
 
 impl Php {
     pub fn new() -> Php {
         let classes = Arc::new(RwLock::new(HashMap::new()));
-        let work_stack = Arc::new(RwLock::new(Vec::new()));
-        Php { classes, work_stack }
+        let has_get_stack = Arc::new(RwLock::new(Vec::new()));
+        let has_get_repository_stack = Arc::new(RwLock::new(Vec::new()));
+        Php {
+            classes,
+            has_get_stack,
+            has_get_repository_stack,
+        }
     }
 
     pub fn load_class(&self, class_full_name: &str) -> Option<()> {
-        let classes_r = self.classes.read().unwrap();  //_reader_factory.handle();
+        let classes_r = self.classes.read().unwrap(); //_reader_factory.handle();
 
         let class = classes_r.get(class_full_name);
         if class.is_none() {
@@ -125,5 +130,14 @@ impl Php {
             return None;
         }
         return Some(());
+    }
+}
+
+/// Returns slice of the class full name
+/// Ex: `Root\MyBundle\Thing\Service` -> `Service`
+fn class_name(class_full_name: &str) -> &str {
+    match class_full_name.rfind('\\') {
+        Some(i) => &class_full_name[i + 1..],
+        None => class_full_name,
     }
 }

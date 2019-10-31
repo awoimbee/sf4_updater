@@ -16,9 +16,9 @@ static NAMESPACE_SEARCH_DIRS: &'static [&'static str] =
 
 static ENTITY_SEARCH_DIRS: &'static [(&'static str, &'static str)] = &[
     ("MeeroApiBundle", "Meero\\ApiBundle\\Entity\\"),
-    ("MeeroMediaBundle", "Meero\\MediaBundle\\ntity\\"),
+    ("MeeroMediaBundle", "Meero\\MediaBundle\\Entity\\"),
     ("MeeroShootBundle", "Meero\\ShootBundle\\Entity\\"),
-    ("MeeroShowcaseBundle", "Meero\\ShowcaseBundle\\Entity\\")
+    ("MeeroShowcaseBundle", "Meero\\ShowcaseBundle\\Entity\\"),
 ];
 
 lazy_static! {
@@ -41,11 +41,17 @@ fn main() {
     .get_matches();
 
     let project_root = {
-        PROJECT_ROOT.write().unwrap().push_str(arg_matches.value_of("PROJECT_FD").unwrap());
+        PROJECT_ROOT
+            .write()
+            .unwrap()
+            .push_str(arg_matches.value_of("PROJECT_FD").unwrap());
         &PROJECT_ROOT.read().unwrap()
     };
-    let work_dir = {
-        WORK_DIR.write().unwrap().push_str(arg_matches.value_of("WORK_DIR").unwrap());
+    let _work_dir = {
+        WORK_DIR
+            .write()
+            .unwrap()
+            .push_str(arg_matches.value_of("WORK_DIR").unwrap());
         &WORK_DIR.read().unwrap()
     };
     let controllers_conf = arg_matches.value_of("CONTROLLERS_CONF_YML").unwrap();
@@ -63,5 +69,5 @@ fn main() {
     f_find::f_find(&project_srcs, ".php", |s| php.clone().add_from_php(s));
 
     // php.rm_get(&dealiaser, work_dir as &str);
-    php.rm_get_repository();
+    php.dealias_get_repository();
 }
