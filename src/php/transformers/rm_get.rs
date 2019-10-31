@@ -27,7 +27,7 @@ impl Php {
                 && class.parent.is_some()
             {
                 let parent_class_name = class.parent.as_ref().unwrap();
-                if self.load_class(parent_class_name).is_none() {
+                if self.load_class(parent_class_name, Some(file_dir_path(&class.path))).is_none() {
                     println!("\t\tCannot load parent class `{}`", parent_class_name);
                     continue;
                 }

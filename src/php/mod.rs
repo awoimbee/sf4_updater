@@ -118,12 +118,12 @@ impl Php {
         }
     }
 
-    pub fn load_class(&self, class_full_name: &str) -> Option<()> {
+    pub fn load_class(&self, class_full_name: &str, path: Option<&str>) -> Option<()> {
         let classes_r = self.classes.read().unwrap(); //_reader_factory.handle();
 
         let class = classes_r.get(class_full_name);
         if class.is_none() {
-            if let Some(class_path) = resolve_namespace::resolve_namespace(class_full_name) {
+            if let Some(class_path) = resolve_namespace::namespace_to_path(class_full_name, path) {
                 self.add_from_php(&class_path);
                 if let Some(_parent) = classes_r.get(class_full_name) {
                     return Some(());
@@ -135,11 +135,34 @@ impl Php {
     }
 }
 
-/// Returns slice of the class full name
+/// Returns slice from the class full name
+///
 /// Ex: `Root\MyBundle\Thing\Service` -> `Service`
 fn class_name(class_full_name: &str) -> &str {
     match class_full_name.rfind('\\') {
         Some(i) => &class_full_name[i + 1..],
+        None => class_full_name,
+    }
+}
+
+/// Returns slice from the class full name
+///
+/// Ex: `Root\MyBundle\Thing\Service` -> `Root\MyBundle\Thing\`
+///
+/// Ex: `Test` -> `Test`
+fn class_namespace(class_full_name: &str) -> &str {
+    match class_full_name.rfind('\\') {
+        Some(i) => &class_full_name[..i],
+        None => class_full_name,
+    }
+}
+
+/// Returns slice from path
+///
+/// Ex: `Root/MyBundle/Thing/Service.php` -> `Root/MyBundle/Thing/`
+fn file_dir_path(class_full_name: &str) -> &str {
+    match class_full_name.rfind('/') {
+        Some(i) => &class_full_name[..i],
         None => class_full_name,
     }
 }

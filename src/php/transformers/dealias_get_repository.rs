@@ -35,7 +35,7 @@ impl php::Php {
                 let repo_alias_cap = getrepo_cap.get(1).unwrap();
                 let repo_alias = repo_alias_cap.as_str();
 
-                let entity_full_name = match resolve_entity_namespace(repo_alias) {
+                let entity_full_name = match alias_to_namespace(repo_alias) {
                     Some(full_name) => full_name,
                     None => {
                         eprintln!("FUCK {}", repo_alias);

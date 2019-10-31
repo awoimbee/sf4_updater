@@ -28,6 +28,7 @@ lazy_static! {
 }
 
 // TODO: parse XML config
+// TODO: add slog (https://github.com/slog-rs/term/blob/master/examples/compact-color.rs)
 fn main() {
     let arg_matches = clap_app!(myapp =>
         (version: "0.1")
