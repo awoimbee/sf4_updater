@@ -10,8 +10,6 @@ mod php_parser;
 pub mod resolve_namespace;
 pub mod transformers;
 
-// public function __construct\(([^)]*)\)[^{]*{
-
 lazy_static! {
     static ref RE_CLASS: Regex = // .get(2): class; .get(4): parent;
         Regex::new(r"\n(abstract )?class ([^ \n]*)( extends ([^ \n]*))?").unwrap();
@@ -25,7 +23,7 @@ lazy_static! {
     static ref RE_CONSTRUCT: Regex = // .get(0): 'pub... {'; .get(1): (*args*)
         Regex::new(r"public function __construct\(([^)]*)\)[^{]*\{").unwrap();
     static ref RE_NO_CONSTRUCT: Regex =
-        Regex::new(r"\n[ \t]*.*?function [^ (]*").unwrap();
+        Regex::new(r"(?-s)\n[ \t]*.*?function [^ (]*").unwrap();
     static ref RE_GET: Regex = // .get(0): $this->get; .get(1): class
         Regex::new(r"\$this->get\('(.*?)'\)").unwrap();
     /// Only finds the getrepository that uses the 'alias' name
@@ -41,6 +39,7 @@ struct Arg {
     name: String,
     typeh: Option<String>,
     def_val: Option<String>,
+    in_class_name: Option<String>,
 }
 
 #[derive(Debug)]
@@ -72,6 +71,38 @@ impl Class {
             has_get: false,
             has_get_repository: false,
         }
+    }
+    pub fn construct_arg_named(&self, name: &str) -> Option<&Arg> {
+        for ca in self.construct_args.iter() {
+            if ca.name == name {
+                return Some(ca);
+            }
+        }
+        return None;
+    }
+    pub fn construct_arg_named_mut(&mut self, name: &str) -> Option<&mut Arg> {
+        for ca in self.construct_args.iter_mut() {
+            if ca.name == name {
+                return Some(ca);
+            }
+        }
+        return None;
+    }
+    pub fn construct_arg_type(&self, typeh: &str) -> Option<&Arg> {
+        for ca in self.construct_args.iter() {
+            if ca.typeh.is_some() && ca.typeh.as_ref().unwrap() == typeh {
+                return Some(ca);
+            }
+        }
+        return None;
+    }
+    pub fn construct_arg_type_mut(&mut self, typeh: &str) -> Option<&mut Arg> {
+        for ca in self.construct_args.iter_mut() {
+            if ca.typeh.is_some() && ca.typeh.as_ref().unwrap() == typeh {
+                return Some(ca);
+            }
+        }
+        return None;
     }
 }
 

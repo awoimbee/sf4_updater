@@ -42,15 +42,16 @@ impl Php {
                     Regex::new(r"(?:(?P<type>[\\a-zA-Z\-_0-9]*) )?(?P<name>&?\$[a-zA-Z\-_0-9]*)(?:[ \t]*=[ \t]*(?P<def>.*))?").unwrap();
             }
             let mut args = caps.get(1).unwrap().as_str();
-            println!("full args: {}", args);
+            // println!("full args: {}", args);
             while let Some(arg_cap) = RE_ARGS.captures(args) {
                 if arg_cap.get(1).is_none() {
                     break;
                 }
                 let arg = &arg_cap[1].trim();
-                println!("\tArg: {}", arg);
+                // println!("\tArg: {}", arg);
                 let arg_parts = RE_ARG.captures(arg).unwrap();
-                let name = arg_parts.name("name").unwrap().as_str().to_owned();
+                let name = arg_parts.name("name").unwrap().as_str();
+                let name = name[name.find('$').unwrap()+1..].to_owned();
                 let def_val = match arg_parts.name("def") {
                     Some(def) => Some(def.as_str().to_owned()),
                     None => None,
@@ -65,12 +66,18 @@ impl Php {
                     },
                     None => None,
                 };
+                let in_class_name_re = Regex::new(&format!("(\\$this->[a-zA-Z\\-_0-9]*) = \\${};", name)).unwrap();
+                let in_class_name = match in_class_name_re.captures(php) {
+                    Some(m) => Some(m[1].to_owned()),
+                    None => None
+                };
                 let arg = php::Arg {
                     name,
                     typeh,
                     def_val,
+                    in_class_name
                 };
-                println!("\t\tConstructor arg: {:?}", arg);
+                // println!("\t\tConstructor arg: {:?}", arg);
                 class.construct_args.push(arg);
                 args = &args[..arg_cap.get(1).unwrap().start()];
                 // println!("\t\tNew args: {}", args);

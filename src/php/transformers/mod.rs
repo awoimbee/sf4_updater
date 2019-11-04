@@ -1,5 +1,5 @@
 use crate::php::Class;
-use crate::php::RE_ALL_USE;
+use crate::php;
 use std::fs::File;
 use std::fs::OpenOptions;
 use std::io::prelude::*;
@@ -7,6 +7,7 @@ use std::io::prelude::*;
 mod dealias_get_repository;
 mod rm_get;
 
+#[derive(Debug)]
 struct FileTransformer {
     contents: String,
     read_ofst: usize,
@@ -68,7 +69,7 @@ impl FileTransformer {
 
 impl FileTransformer {
     fn rewrite_uses(&mut self, class: &Class) -> String {
-        let uses_cap = RE_ALL_USE.find(&self.contents).unwrap();
+        let uses_cap = php::RE_ALL_USE.find(&self.contents).unwrap();
         let use_start = uses_cap.start();
         let uses_end = uses_cap.end();
         let new_uses: String = class
@@ -85,5 +86,31 @@ impl FileTransformer {
             new_uses,
             &self.contents[uses_end..]
         )
+    }
+    /// LOTS OF TODO HERE
+    pub fn new_constructor_injection(&mut self, var_type: &str, var_name: &str) {
+        println!("new construct my ass");
+        let wher = php::RE_NO_CONSTRUCT.find(&self.contents).unwrap().start(); // TODO: WILL EXPLODE
+        let before = &self.contents[..wher];
+        let after = &self.contents[wher..];
+        let args = format!("{} ${}", var_type, var_name);
+        let body = format!("$this->{0} = ${0};", var_name);
+        // Big yolo
+
+        self.contents = format!(
+            "{}\nprivate ${};\npublic function __construct({}) {{\n{}\n}}\n{}",
+            before,
+            var_name,
+            args,
+            body,
+            after
+        );
+        println!("fuck you");
+    }
+    pub fn add_class_var(&mut self, typeh: &str, var_name: &str) {
+        let wher = php::RE_NO_CONSTRUCT.find(&self.contents).unwrap().start(); // TODO: WILL EXPLODE
+        let before = &self.contents[wher..];
+        let after = &self.contents[..wher];
+
     }
 }

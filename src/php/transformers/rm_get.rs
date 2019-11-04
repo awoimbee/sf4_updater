@@ -2,6 +2,8 @@ use crate::dealiaser::Dealiaser;
 use crate::php::transformers::FileTransformer;
 use crate::php::*;
 
+
+
 impl Php {
     // fn rm_get_transform()
 
@@ -14,7 +16,7 @@ impl Php {
             let classes_r = self.classes.read().unwrap();
             let class_mutex = classes_r.get(class_name).unwrap().clone();
             drop(classes_r);
-            let class = class_mutex.lock().unwrap();
+            let mut class = class_mutex.lock().unwrap();
 
             if class.construct_args.len() == 0 && class.parent.is_some() {
                 let parent_class_name = class.parent.as_ref().unwrap();
@@ -51,15 +53,43 @@ impl Php {
                         continue;
                     }
                 };
-                let mut var_name =
-                    service_fname[service_fname.rfind('\\').unwrap_or(0)..].to_owned();
-                let first_char = &mut var_name.chars().nth(0).unwrap();
-                *first_char = first_char.to_ascii_lowercase();
 
-                println!("\t\t{:70} => {}", get_alias, service_fname);
-                ft.reader_skip(fmatch_bounds.1);
-                continue;
+                if let Some(arg) = class.construct_arg_type(&service_fname) {
+                    println!("SERVICE IS ALREADY INJECTED, TODO");
+                    ft.reader_skip(fmatch_bounds.1);
+                    continue;
+                }
+                else {
+                    let service_short_name = match service_fname.rfind('\\') {
+                        Some(i) => &service_fname[i + 1..],
+                        None => &service_fname
+                    };
+                    let mut var_name = service_short_name.to_owned();
+                    unsafe {
+                        let p = (&mut var_name).as_mut_ptr();
+                        let c = (*p as char).to_ascii_lowercase();
+                        *p = c as u8;
+                    }
+
+                    class.uses.insert(service_short_name.to_owned(), service_fname.clone());
+
+                    println!("replace {} by $this->{}", full_match.as_str(), var_name);
+                    if class.construct_args.len() == 0 {
+                        ft.new_constructor_injection(service_short_name, &var_name);
+                    } else {
+                        println!("FUCKING TODO");
+                    }
+
+                    ft.reader_replace(fmatch_bounds.0+1, fmatch_bounds.1, &format!("$this->{}", var_name));
+                    println!("FUCK: {:?}", ft);
+                }
+                // println!("\t\t{:50} => {}: {}", get_alias, var_name, service_fname);
+                // ft.reader_skip(fmatch_bounds.1);
+                // continue;
+                break;
             }
+            ft.rewrite_uses(&class);
+            ft.write_file(&class.path);
         }
     }
 }
