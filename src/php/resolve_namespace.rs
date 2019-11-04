@@ -20,8 +20,8 @@ pub fn namespace_to_path(full_name: &str) -> Option<String> {
 }
 
 /// get entity alias ('MeeroShootBundle:Location')
-/// Return namespace ('Meero\Shootbundle\Entity\Location')
-pub fn alias_to_namespace(full_name: &str) -> Option<String> {
+/// Returns namespace ('Meero\Shootbundle\Entity\Location')
+pub fn entity_dealias(full_name: &str) -> Option<String> {
     let sep = full_name.rfind(':').unwrap_or(0);
 
     let nspace_alias = &full_name[..sep];

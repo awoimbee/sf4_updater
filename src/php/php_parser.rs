@@ -16,7 +16,7 @@
 // 	Some(cap.as_str())
 // }
 
-// fn get_constructor_args<'a>(php: &'a str) -> Option<&'a str> {
+// fn get_construct_args<'a>(php: &'a str) -> Option<&'a str> {
 // 	let cap = match RE_CONSTRUCT.captures(php) {
 // 		Some(c) => c,
 // 		None => return None
@@ -24,7 +24,7 @@
 // 	Some(&cap[1])
 // }
 
-// fn split_constructor_args(args: &str) -> Vec<Arg> {
+// fn split_construct_args(args: &str) -> Vec<Arg> {
 // 	let mut res = Vec::new();
 // 	let args_iter = args.split(',');
 // 	for arg_match in args_iter {

@@ -44,25 +44,6 @@ impl FileTransformer {
     pub fn get_mut(&mut self) -> &mut String {
         &mut self.contents
     }
-    fn rewrite_uses(&mut self, class: &Class) -> String {
-        let uses_cap = RE_ALL_USE.find(&self.contents).unwrap();
-        let use_start = uses_cap.start();
-        let uses_end = uses_cap.end();
-        let new_uses: String = class
-            .uses
-            .iter()
-            .map(|(k, v)| match v.ends_with(k) {
-                true => format!("\nuse {};", v),
-                false => format!("\nuse {} as {};", v, k),
-            })
-            .collect::<String>();
-        format!(
-            "{}{}{}",
-            &self.contents[..use_start],
-            new_uses,
-            &self.contents[uses_end..]
-        )
-    }
     fn write_file(&self, file_name: &str) -> bool {
         let open_options = OpenOptions::new()
             .write(true)
@@ -82,5 +63,27 @@ impl FileTransformer {
                 false
             }
         }
+    }
+}
+
+impl FileTransformer {
+    fn rewrite_uses(&mut self, class: &Class) -> String {
+        let uses_cap = RE_ALL_USE.find(&self.contents).unwrap();
+        let use_start = uses_cap.start();
+        let uses_end = uses_cap.end();
+        let new_uses: String = class
+            .uses
+            .iter()
+            .map(|(k, v)| match v.ends_with(k) {
+                true => format!("\nuse {};", v),
+                false => format!("\nuse {} as {};", v, k),
+            })
+            .collect::<String>();
+        format!(
+            "{}{}{}",
+            &self.contents[..use_start],
+            new_uses,
+            &self.contents[uses_end..]
+        )
     }
 }

@@ -1,3 +1,4 @@
+use regex::Regex;
 use std::fs::File;
 use std::io::prelude::*;
 use std::sync::Arc;
@@ -12,16 +13,7 @@ impl Php {
     fn extract_php(&self, php: &str, path: String) -> Option<(String, Class)> {
         let mut class = Class::new();
 
-        if let Some(_match) = php::RE_CONSTRUCT.find(&php) {
-            class.has_constructor = true;
-        }
-        if let Some(_) = php::RE_GET.find(&php) {
-            class.has_get = true;
-        }
-        if let Some(_) = php::RE_GETREPOSITORY.find(&php) {
-            class.has_get_repository = true;
-        }
-        /* catch all `use` statements */
+        /* Catch `use` statements */
         for cap_use in php::RE_USE.captures_iter(&php) {
             let use_nspace = cap_use[1].to_owned();
             let use_name = match cap_use.get(3) {
@@ -30,7 +22,7 @@ impl Php {
             };
             class.uses.insert(use_name, use_nspace);
         }
-
+        /* Catch namespace */
         let class_nspace = match php::RE_NAMESPACE.captures(&php) {
             Some(cap) => {
                 let cnspace = &cap[1];
@@ -41,6 +33,55 @@ impl Php {
             }
             None => return None,
         };
+        /* Catch constructor args */
+        if let Some(caps) = php::RE_CONSTRUCT.captures(&php) {
+            lazy_static! {
+                static ref RE_ARGS: Regex =
+                    Regex::new(r"^(\s*(?:(?:\??[a-zA-Z\-_0-9]*)\s*)?(?:&?\$[a-zA-Z\-_0-9]*)(?:\s*=\s*(?:.*?))?[,]?\s*)*$").unwrap();
+                static ref RE_ARG: Regex =
+                    Regex::new(r"(?:(?P<type>[\\a-zA-Z\-_0-9]*) )?(?P<name>&?\$[a-zA-Z\-_0-9]*)(?:[ \t]*=[ \t]*(?P<def>.*))?").unwrap();
+            }
+            let mut args = caps.get(1).unwrap().as_str();
+            println!("full args: {}", args);
+            while let Some(arg_cap) = RE_ARGS.captures(args) {
+                if arg_cap.get(1).is_none() {
+                    break;
+                }
+                let arg = &arg_cap[1].trim();
+                println!("\tArg: {}", arg);
+                let arg_parts = RE_ARG.captures(arg).unwrap();
+                let name = arg_parts.name("name").unwrap().as_str().to_owned();
+                let def_val = match arg_parts.name("def") {
+                    Some(def) => Some(def.as_str().to_owned()),
+                    None => None,
+                };
+                let typeh = match arg_parts.name("type") {
+                    Some(t) => match class.uses.get(t.as_str()) {
+                        Some(f_t) => Some(f_t.clone()),
+                        None => {
+                            eprintln!("No use found for {}", t.as_str());
+                            Some(t.as_str().to_owned())
+                        }
+                    },
+                    None => None,
+                };
+                let arg = php::Arg {
+                    name,
+                    typeh,
+                    def_val,
+                };
+                println!("\t\tConstructor arg: {:?}", arg);
+                class.construct_args.push(arg);
+                args = &args[..arg_cap.get(1).unwrap().start()];
+                // println!("\t\tNew args: {}", args);
+            }
+        }
+        if let Some(_) = php::RE_GET.find(&php) {
+            class.has_get = true;
+        }
+        if let Some(_) = php::RE_GETREPOSITORY.find(&php) {
+            class.has_get_repository = true;
+        }
 
         let (class_full_name, class_parent_full_name) = {
             let caps = match php::RE_CLASS.captures(&php) {
@@ -55,7 +96,8 @@ impl Php {
             let parent_nspace = match class.uses.get(parent_sname) {
                 Some(s) => Some(s.clone()),
                 None => {
-                    if parent_sname.is_empty() { // No parent
+                    if parent_sname.is_empty() {
+                        // No parent
                         None
                     } else {
                         // parent namespace not explicit

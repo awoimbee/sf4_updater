@@ -5,6 +5,7 @@ use std::sync::Mutex;
 use std::sync::RwLock;
 
 mod class_extractor;
+mod method_extractor;
 mod php_parser;
 pub mod resolve_namespace;
 pub mod transformers;
@@ -36,14 +37,19 @@ lazy_static! {
 }
 
 #[derive(Debug)]
+struct Arg {
+    name: String,
+    typeh: Option<String>,
+    def_val: Option<String>,
+}
+
+#[derive(Debug)]
 struct Class {
     path: String,
     children: Vec<String>,
     parent: Option<String>,
-    uses: HashMap<String, String>, // Name \ Class
-    // idx_use_end: usize,
-    // idx_construct_start: usize,
-    has_constructor: bool,
+    uses: HashMap<String, String>, // Alias -- ClassFullName
+    construct_args: Vec<Arg>,      // if 0 -> no constructor
     has_get: bool,
     has_get_repository: bool,
 }
@@ -57,54 +63,17 @@ pub struct Php {
 
 impl Class {
     pub fn new() -> Class {
-        let children = Vec::new();
-        let parent = None;
-        let uses = HashMap::new();
-        let path = String::new();
         Class {
-            path,
-            children,
-            parent,
-            uses,
-            // idx_use_end: 0,
-            // idx_construct_start: 0,
-            has_constructor: false,
+            path: String::new(),
+            children: Vec::new(),
+            parent: None,
+            uses: HashMap::new(),
+            construct_args: Vec::new(),
             has_get: false,
             has_get_repository: false,
         }
     }
 }
-
-// impl Clone for Class {
-//     #[inline]
-//     fn clone(&self) -> Self {
-//         Class {
-//             path: self.path.clone(),
-//             children: self.children.clone(),
-//             parent: self.parent.clone(),
-//             uses: self.uses.clone(),
-//             // idx_use_end: self.idx_use_end,
-//             // idx_construct_start: self.idx_construct_start,
-//             has_constructor: self.has_constructor,
-//             has_get: self.has_get,
-//             has_get_repository: self.has_get
-//         }
-//     }
-// }
-
-// impl evmap::ShallowCopy for Class {
-//     #[inline]
-//     unsafe fn shallow_copy(&mut self) -> Self {
-//         self.clone()
-//     }
-// }
-
-// impl PartialEq for Class {
-//     fn eq(&self, other: &Self) -> bool {
-//         self.path == other.path
-//     }
-// }
-// impl Eq for Class {}
 
 impl Php {
     pub fn new() -> Php {
