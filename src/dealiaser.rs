@@ -18,10 +18,10 @@ impl Dealiaser {
         Dealiaser { classes: c }
     }
 
-    pub fn add(&mut self, class: &str, alias: &str) {
-        let mut c = self.classes.write().unwrap();
-        c.insert(alias.to_owned(), class.to_owned());
-    }
+    // pub fn add(&mut self, class: &str, alias: &str) {
+    //     let mut c = self.classes.write().unwrap();
+    //     c.insert(alias.to_owned(), class.to_owned());
+    // }
 
     pub fn dealias(&self, alias: &str) -> Option<String> {
         let c = self.classes.read().unwrap();
@@ -32,6 +32,7 @@ impl Dealiaser {
     }
 
     pub fn add_from_yml(&mut self, file_path: &str) {
+        // println!("Add from yml conf from: {}", file_path);
         let mut file = File::open(file_path).unwrap(); // check err
         let mut contents = String::new();
         file.read_to_string(&mut contents).unwrap();
@@ -55,14 +56,14 @@ impl Dealiaser {
                 } else if let Some(s_alias) = s_opts["class"].as_str() {
                     s_alias
                 } else {
-                    return;
+                    continue;
                 }
             };
             let (namespaced, pointed) = match s_name.contains("\\") {
                 true => (s_name, s_alias),
                 false => (s_alias, s_name),
             };
-            // println!("Dealiaser: add {} => {}", pointed, namespaced);
+            // println!("\tadd {:50} => {}", pointed, namespaced);
             alias_map.insert(pointed.to_owned(), namespaced.to_owned());
         }
         drop(alias_map);

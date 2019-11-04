@@ -120,12 +120,13 @@ impl Php {
 
     pub fn load_class(&self, class_full_name: &str, path: Option<&str>) -> Option<()> {
         let classes_r = self.classes.read().unwrap(); //_reader_factory.handle();
+                                                      // let class = classes_r.get(class_full_name);
 
-        let class = classes_r.get(class_full_name);
-        if class.is_none() {
-            if let Some(class_path) = resolve_namespace::namespace_to_path(class_full_name, path) {
+        if classes_r.get(class_full_name).is_none() {
+            drop(classes_r);
+            if let Some(class_path) = resolve_namespace::namespace_to_path(class_full_name) {
                 self.add_from_php(&class_path);
-                if let Some(_parent) = classes_r.get(class_full_name) {
+                if let Some(_parent) = self.classes.read().unwrap().get(class_full_name) {
                     return Some(());
                 }
             }
@@ -158,11 +159,16 @@ fn class_namespace(class_full_name: &str) -> &str {
 }
 
 /// Returns slice from path
+/// ## Exemple
+/// ```
+/// let class_path = "Root/src/MyBundle/Service.php"
+/// assert_eq!(file_dir_path(class_path, "Root/src/MyBundle/"));
 ///
-/// Ex: `Root/MyBundle/Thing/Service.php` -> `Root/MyBundle/Thing/`
-fn file_dir_path(class_full_name: &str) -> &str {
-    match class_full_name.rfind('/') {
-        Some(i) => &class_full_name[..i],
-        None => class_full_name,
+/// ```
+fn file_dir_path(class_path: &str) -> &str {
+    assert_eq!("a", "a");
+    match class_path.rfind('/') {
+        Some(i) => &class_path[..i],
+        None => class_path,
     }
 }
