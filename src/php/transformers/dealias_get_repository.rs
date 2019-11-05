@@ -58,7 +58,7 @@ impl php::Php {
                 let new = format!("{}::class", entity_name);
                 let start = repo_alias_cap.start();
                 let end = repo_alias_cap.end();
-                ft.reader_replace(start, end, &new);
+                ft.reader_replace(start-1, end+1, &new);
             }
             ft.rewrite_uses(&class);
             ft.write_file(&class.path);

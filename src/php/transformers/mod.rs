@@ -26,8 +26,8 @@ impl FileTransformer {
         }
     }
     pub fn reader_replace(&mut self, re_start: usize, re_end: usize, replacement: &str) {
-        let before = re_start - 1 + self.read_ofst;
-        let after = re_end + 1 + self.read_ofst;
+        let before = re_start + self.read_ofst;
+        let after = re_end + self.read_ofst;
         self.contents = format!(
             "{}{}{}",
             &self.contents[..before],
@@ -89,8 +89,8 @@ impl FileTransformer {
     }
     /// LOTS OF TODO HERE
     pub fn new_constructor_injection(&mut self, var_type: &str, var_name: &str) {
-        println!("new construct my ass");
-        let wher = php::RE_NO_CONSTRUCT.find(&self.contents).unwrap().start(); // TODO: WILL EXPLODE
+        println!("new_constructor_injection");
+        let wher = php::RE_METH_N_DOC.find(&self.contents).unwrap().start(); // TODO: WILL EXPLODE
         let before = &self.contents[..wher];
         let after = &self.contents[wher..];
         let args = format!("{} ${}", var_type, var_name);
@@ -105,10 +105,15 @@ impl FileTransformer {
             body,
             after
         );
-        println!("fuck you");
+        println!("DONE");
+    }
+    pub fn update_constructor_injection(&mut self, var_type: &str, var_name: &str) {
+        println!("update_constructor_injection");
+        let construct_match = php::RE_CONSTRUCT.find(&self.contents).unwrap();
+        //TODO
     }
     pub fn add_class_var(&mut self, typeh: &str, var_name: &str) {
-        let wher = php::RE_NO_CONSTRUCT.find(&self.contents).unwrap().start(); // TODO: WILL EXPLODE
+        let wher = php::RE_METH_N_DOC.find(&self.contents).unwrap().start(); // TODO: WILL EXPLODE
         let before = &self.contents[wher..];
         let after = &self.contents[..wher];
 

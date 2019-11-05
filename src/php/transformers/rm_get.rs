@@ -71,17 +71,17 @@ impl Php {
                         *p = c as u8;
                     }
 
-                    class.uses.insert(service_short_name.to_owned(), service_fname.clone());
 
                     println!("replace {} by $this->{}", full_match.as_str(), var_name);
                     if class.construct_args.len() == 0 {
+                        class.uses.insert(service_short_name.to_owned(), service_fname.clone());
+                        ft.reader_replace(fmatch_bounds.0, fmatch_bounds.1, &format!("$this->{}", var_name));
                         ft.new_constructor_injection(service_short_name, &var_name);
                     } else {
                         println!("FUCKING TODO");
+                        ft.reader_skip(fmatch_bounds.1);
                     }
 
-                    ft.reader_replace(fmatch_bounds.0+1, fmatch_bounds.1, &format!("$this->{}", var_name));
-                    println!("FUCK: {:?}", ft);
                 }
                 // println!("\t\t{:50} => {}: {}", get_alias, var_name, service_fname);
                 // ft.reader_skip(fmatch_bounds.1);

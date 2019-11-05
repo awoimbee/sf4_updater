@@ -22,8 +22,8 @@ lazy_static! {
         Regex::new(r"\nuse ([^ ;]*)( as ([^ ;]*))?;").unwrap();
     static ref RE_CONSTRUCT: Regex = // .get(0): 'pub... {'; .get(1): (*args*)
         Regex::new(r"public function __construct\(([^)]*)\)[^{]*\{").unwrap();
-    static ref RE_NO_CONSTRUCT: Regex =
-        Regex::new(r"(?-s)\n[ \t]*.*?function [^ (]*").unwrap();
+    static ref RE_METH_N_DOC: Regex =
+        Regex::new(r"(?:/\*\*(?:[*][^/]|[^*])*\*/\s*)?\n[ \t]*(?:public|private|protected)?[ \t]*function [^ (]*").unwrap();
     static ref RE_GET: Regex = // .get(0): $this->get; .get(1): class
         Regex::new(r"\$this->get\('(.*?)'\)").unwrap();
     /// Only finds the getrepository that uses the 'alias' name
