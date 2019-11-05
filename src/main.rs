@@ -12,7 +12,7 @@ use dealiaser::Dealiaser;
 use std::sync::RwLock;
 
 static NAMESPACE_SEARCH_DIRS: &'static [&'static str] =
-    &["/src/Meero/", "/vendor/", "/src/Meero/DataFixtures/"];
+    &["/src/", "/vendor/", "/src/Meero/DataFixtures/"];
 
 static ENTITY_SEARCH_DIRS: &'static [(&'static str, &'static str)] = &[
     ("MeeroApiBundle", "Meero\\ApiBundle\\Entity\\"),
@@ -25,6 +25,7 @@ lazy_static! {
     /// Don't ever try to .write() this !
     static ref PROJECT_ROOT: RwLock<String> = RwLock::new(String::new());
     static ref WORK_DIR: RwLock<String> = RwLock::new(String::new());
+    static ref CONTROLLERS_YML: RwLock<String> = RwLock::new(String::new());
 }
 
 // TODO: parse XML config
@@ -55,7 +56,13 @@ fn main() {
             .push_str(arg_matches.value_of("WORK_DIR").unwrap());
         &WORK_DIR.read().unwrap()
     };
-    let controllers_conf = arg_matches.value_of("CONTROLLERS_CONF_YML").unwrap();
+    let controllers_conf = {
+        CONTROLLERS_YML
+            .write()
+            .unwrap()
+            .push_str(arg_matches.value_of("CONTROLLERS_CONF_YML").unwrap());
+        &CONTROLLERS_YML.read().unwrap()
+    };
 
     let project_conf = format!("{}/app/config", project_root);
     let project_srcs = format!("{}/src/Meero", project_root);

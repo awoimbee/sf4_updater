@@ -8,6 +8,22 @@ use crate::php;
 use crate::php::resolve_namespace::namespace_to_path;
 use crate::php::{Class, Php};
 
+// pub interface
+impl Php {
+    /// /!\ Write lock on classes
+    pub fn add_from_php(&self, file_path: &str) {
+        let mut file = File::open(file_path).unwrap();
+        let mut contents = String::new();
+        file.read_to_string(&mut contents).unwrap_or(0);
+
+        let (class_full_name, class) = match self.extract_php(&contents, file_path.to_owned()) {
+            Some((class_fname, class)) => (class_fname, class),
+            None => return,
+        };
+        self.add_class(file_path, &class_full_name, class);
+    }
+}
+
 impl Php {
     /// Returns class full name & Class
     fn extract_php(&self, php: &str, path: String) -> Option<(String, Class)> {
@@ -15,8 +31,8 @@ impl Php {
 
         /* Catch `use` statements */
         for cap_use in php::RE_USE.captures_iter(&php) {
-            let use_nspace = cap_use[1].to_owned();
-            let use_name = match cap_use.get(3) {
+            let use_nspace = cap_use.name("class").unwrap().as_str().to_owned();
+            let use_name = match cap_use.name("alias") {
                 Some(alias) => alias.as_str().to_owned(),
                 None => php::class_name(&use_nspace).to_owned(),
             };
@@ -36,22 +52,18 @@ impl Php {
         /* Catch constructor args */
         if let Some(caps) = php::RE_CONSTRUCT.captures(&php) {
             lazy_static! {
-                static ref RE_ARGS: Regex =
-                    Regex::new(r"^(\s*(?:(?:\??[a-zA-Z\-_0-9]*)\s*)?(?:&?\$[a-zA-Z\-_0-9]*)(?:\s*=\s*(?:.*?))?[,]?\s*)*$").unwrap();
-                static ref RE_ARG: Regex =
+                static ref RE_SEPARATE_ARGS: Regex =
+                    Regex::new(r"^(\s*(?:(?:\??[a-zA-Z\-_0-9]*)\s*)?(?:&?\$[a-zA-Z\-_0-9]*)(?:\s*=\s*(?:.*?))?[,]?\s*)+$").unwrap();
+                static ref RE_ARG_INFOS: Regex =
                     Regex::new(r"(?:(?P<type>[\\a-zA-Z\-_0-9]*) )?(?P<name>&?\$[a-zA-Z\-_0-9]*)(?:[ \t]*=[ \t]*(?P<def>.*))?").unwrap();
             }
-            let mut args = caps.get(1).unwrap().as_str();
-            // println!("full args: {}", args);
-            while let Some(arg_cap) = RE_ARGS.captures(args) {
-                if arg_cap.get(1).is_none() {
-                    break;
-                }
-                let arg = &arg_cap[1].trim();
-                // println!("\tArg: {}", arg);
-                let arg_parts = RE_ARG.captures(arg).unwrap();
+            let mut args = caps.name("args").unwrap().as_str();
+
+            while let Some(arg_cap) = RE_SEPARATE_ARGS.captures(args) {
+                let arg_cap = arg_cap.get(1).unwrap();
+                let arg_parts = RE_ARG_INFOS.captures(arg_cap.as_str()).unwrap();
                 let name = arg_parts.name("name").unwrap().as_str();
-                let name = name[name.find('$').unwrap()+1..].to_owned();
+                let name = name[name.find('$').unwrap() + 1..].to_owned();
                 let def_val = match arg_parts.name("def") {
                     Some(def) => Some(def.as_str().to_owned()),
                     None => None,
@@ -60,33 +72,32 @@ impl Php {
                     Some(t) => match class.uses.get(t.as_str()) {
                         Some(f_t) => Some(f_t.clone()),
                         None => {
-                            eprintln!("No use found for {}", t.as_str());
+                            println!("No use found for {}", t.as_str());
                             Some(t.as_str().to_owned())
                         }
                     },
                     None => None,
                 };
-                let in_class_name_re = Regex::new(&format!("(\\$this->[a-zA-Z\\-_0-9]*) = \\${};", name)).unwrap();
+                let in_class_name_re =
+                    Regex::new(&format!("(\\$this->[a-zA-Z\\-_0-9]*) = \\${};", name)).unwrap();
                 let in_class_name = match in_class_name_re.captures(php) {
                     Some(m) => Some(m[1].to_owned()),
-                    None => None
+                    None => None,
                 };
                 let arg = php::Arg {
                     name,
                     typeh,
                     def_val,
-                    in_class_name
+                    in_class_name,
                 };
-                // println!("\t\tConstructor arg: {:?}", arg);
                 class.construct_args.push(arg);
-                args = &args[..arg_cap.get(1).unwrap().start()];
-                // println!("\t\tNew args: {}", args);
+                args = &args[..arg_cap.start()];
             }
         }
         if let Some(_) = php::RE_GET.find(&php) {
             class.has_get = true;
         }
-        if let Some(_) = php::RE_GETREPOSITORY.find(&php) {
+        if let Some(_) = php::RE_GETREPOSITORY_ALIAS.find(&php) {
             class.has_get_repository = true;
         }
 
@@ -96,19 +107,17 @@ impl Php {
                 None => return None,
             };
             /* get short names from regex */
-            let class_sname = caps.get(2).map_or("", |m| m.as_str());
-            let parent_sname = caps.get(4).map_or("", |m| m.as_str());
-            /* convert short names to full name (w/ namespace) */
+            let class_sname = caps.name("name").map_or("", |m| m.as_str());
             let class_nspace = format!("{}{}", class_nspace, class_sname);
+
+            let parent_sname = caps.name("parent").map_or("", |m| m.as_str());
             let parent_nspace = match class.uses.get(parent_sname) {
                 Some(s) => Some(s.clone()),
                 None => {
                     if parent_sname.is_empty() {
-                        // No parent
                         None
                     } else {
-                        // parent namespace not explicit
-                        // lets use the implicit namespace
+                        // parent namespace not explicit, lets use the implicit namespace
                         let parent_full_name = format!("{}{}", class_nspace, parent_sname);
                         match namespace_to_path(&parent_full_name).is_some() {
                             true => Some(parent_full_name),
@@ -122,19 +131,6 @@ impl Php {
         class.parent = class_parent_full_name;
         class.path = path.to_owned();
         return Some((class_full_name, class));
-    }
-
-    /// /!\ Write lock on classes
-    pub fn add_from_php(&self, file_path: &str) {
-        let mut file = File::open(file_path).unwrap();
-        let mut contents = String::new();
-        file.read_to_string(&mut contents).unwrap_or(0);
-
-        let (class_full_name, class) = match self.extract_php(&contents, file_path.to_owned()) {
-            Some((class_fname, class)) => (class_fname, class),
-            None => return,
-        };
-        self.add_class(file_path, &class_full_name, class);
     }
 
     fn set_parent(&self, file_path: &str, class_full_name: &str, class: &Class) {

@@ -1,6 +1,36 @@
 use crate::dealiaser::Dealiaser;
 use crate::php::transformers::FileTransformer;
 use crate::php::*;
+use std::collections::BTreeSet;
+use std::fs::OpenOptions;
+use std::fs::File;
+use std::io::Write;
+use std::io::prelude::*;
+use yaml_rust::Yaml;
+use yaml_rust::YamlLoader;
+use std::time::SystemTime;
+
+fn read_controllers_config(file_path: &str) -> BTreeSet<String> {
+    println!("read_controllers_config: {}", file_path);
+    let mut ft = FileTransformer::new(file_path);
+    let mut set = BTreeSet::new();
+
+    let yaml = match YamlLoader::load_from_str(ft.get_mut()) {
+        Ok(y) => y,
+        Err(e) => {
+            eprintln!("/!\\invalid Yaml in `{}`: {}", file_path, e);
+            return set;
+        }
+    };
+    let services = match &yaml[0]["services"] {
+        Yaml::BadValue => return set,
+        s => s.as_hash().unwrap(),
+    };
+    for (s_name, _s_opts) in services {
+        set.insert(s_name.as_str().unwrap().to_owned());
+    }
+    return set;
+}
 
 
 
@@ -11,8 +41,19 @@ impl Php {
         println!("rm_get");
         let pile_reader = self.has_get_stack.read().unwrap();
 
+        let c_r = crate::CONTROLLERS_YML.read().unwrap();
+        let conf_set = read_controllers_config(c_r.as_ref());
+        let mut conf_to_add: Vec<&str> = Vec::new();
+        // let mut conf_added = false;
+
         for class_name in pile_reader.iter() {
             println!("\tName {}", class_name);
+            if !conf_set.contains(class_name) {
+                conf_to_add.push(class_name);
+            }
+            // vec of (typeName, varName)
+            let mut to_add_to_construt: Vec<(String, String)> = Vec::new();
+
             let classes_r = self.classes.read().unwrap();
             let class_mutex = classes_r.get(class_name).unwrap().clone();
             drop(classes_r);
@@ -21,7 +62,7 @@ impl Php {
             if class.construct_args.len() == 0 && class.parent.is_some() {
                 let parent_class_name = class.parent.as_ref().unwrap();
                 if self
-                    .load_class(parent_class_name, Some(file_dir_path(&class.path)))
+                    .load_class(parent_class_name)
                     .is_none()
                 {
                     println!("\t\tCannot load parent class `{}`", parent_class_name);
@@ -58,11 +99,10 @@ impl Php {
                     println!("SERVICE IS ALREADY INJECTED, TODO");
                     ft.reader_skip(fmatch_bounds.1);
                     continue;
-                }
-                else {
+                } else {
                     let service_short_name = match service_fname.rfind('\\') {
                         Some(i) => &service_fname[i + 1..],
-                        None => &service_fname
+                        None => &service_fname,
                     };
                     let mut var_name = service_short_name.to_owned();
                     unsafe {
@@ -71,17 +111,22 @@ impl Php {
                         *p = c as u8;
                     }
 
-
                     println!("replace {} by $this->{}", full_match.as_str(), var_name);
                     if class.construct_args.len() == 0 {
-                        class.uses.insert(service_short_name.to_owned(), service_fname.clone());
-                        ft.reader_replace(fmatch_bounds.0, fmatch_bounds.1, &format!("$this->{}", var_name));
-                        ft.new_constructor_injection(service_short_name, &var_name);
+                        class
+                            .uses
+                            .insert(service_short_name.to_owned(), service_fname.clone());
+                        ft.reader_replace(
+                            fmatch_bounds.0,
+                            fmatch_bounds.1,
+                            &format!("$this->{}", var_name),
+                        );
+                        to_add_to_construt.push((service_short_name.to_owned(), var_name));
+                        // ft.new_constructor_injection(service_short_name, &var_name);
                     } else {
                         println!("FUCKING TODO");
                         ft.reader_skip(fmatch_bounds.1);
                     }
-
                 }
                 // println!("\t\t{:50} => {}: {}", get_alias, var_name, service_fname);
                 // ft.reader_skip(fmatch_bounds.1);
@@ -89,7 +134,26 @@ impl Php {
                 break;
             }
             ft.rewrite_uses(&class);
+            ft.add_to_constructor(&to_add_to_construt);
             ft.write_file(&class.path);
+        }
+        let mut yml_w_handle = match OpenOptions::new().create(true).append(true).open(c_r.as_ref() as &str) {
+            Ok(f) => f,
+            Err(e) => {
+                println!("\nCould not open controllers conf ({})", e);
+                return;
+            }
+        };
+        let yml_header = concat!(
+            "services:\n",
+            "  _defaults:\n",
+            "    autowire: true\n",
+            "    public: true\n"
+        );
+        yml_w_handle.write(format!("\n# Auto-generated at {:?}\n", SystemTime::now()).as_bytes()).unwrap();
+        yml_w_handle.write(yml_header.as_bytes()).unwrap();
+        for s in conf_to_add {
+            yml_w_handle.write(format!("  {}: ~\n", s).as_bytes()).unwrap();
         }
     }
 }

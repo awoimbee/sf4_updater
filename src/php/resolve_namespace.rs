@@ -5,13 +5,17 @@ use std::path::Path;
 /// search_dir is optional, it's the first directory to look for the class in
 pub fn namespace_to_path(full_name: &str) -> Option<String> {
     let project_root = crate::PROJECT_ROOT.read().unwrap();
-    let name_sep_id = full_name.rfind('\\').unwrap_or(0);
+    let name_sep_id = match full_name.rfind('\\') {
+        Some(i) => i + 1,
+        None => 0
+    };
     let file_name = &full_name[name_sep_id..]; // yolo
-    let partial_path = &full_name[..name_sep_id + 1].replace("\\", "/");
+    let partial_path = &full_name[..name_sep_id].replace("\\", "/");
 
-    let partial_path = format!("{}{}.php", file_name, partial_path);
+    // let partial_path = format!("{}{}.php", partial_path, file_name);
     for namespace_root in crate::NAMESPACE_SEARCH_DIRS {
-        let path = format!("{}{}{}", project_root, namespace_root, partial_path);
+        let path = format!("{}{}{}{}.php", project_root, namespace_root, partial_path, file_name);
+        // println!("Test path: {}", path);
         if Path::new(&path).exists() {
             return Some(path);
         }

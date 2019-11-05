@@ -1,5 +1,5 @@
-use crate::php::Class;
 use crate::php;
+use crate::php::Class;
 use std::fs::File;
 use std::fs::OpenOptions;
 use std::io::prelude::*;
@@ -87,26 +87,34 @@ impl FileTransformer {
             &self.contents[uses_end..]
         )
     }
-    /// LOTS OF TODO HERE
-    pub fn new_constructor_injection(&mut self, var_type: &str, var_name: &str) {
-        println!("new_constructor_injection");
-        let wher = php::RE_METH_N_DOC.find(&self.contents).unwrap().start(); // TODO: WILL EXPLODE
-        let before = &self.contents[..wher];
-        let after = &self.contents[wher..];
-        let args = format!("{} ${}", var_type, var_name);
-        let body = format!("$this->{0} = ${0};", var_name);
-        // Big yolo
 
-        self.contents = format!(
-            "{}\nprivate ${};\npublic function __construct({}) {{\n{}\n}}\n{}",
-            before,
-            var_name,
-            args,
-            body,
-            after
-        );
-        println!("DONE");
+    /// ##Add Args to constructor
+    /// &Vec<(String, String)> -> &Vec<VarType, VarName>
+    pub fn add_to_constructor(&mut self, args: &Vec<(String, String)>) {
+        let new_construct_args = args.iter().map(|(t, n)| format!("{} ${}, ", t, n)).collect::<String>();
+        let new_construct_lines = args.iter().map(|(_, n)| format!("$this->{0} = ${0};\n", n)).collect::<String>();
+        let new_class_vars = args.iter().map(|(_, n)| format!("private ${};\n", n)).collect::<String>();
+
+        if php::RE_CONSTRUCT.find(&self.contents).is_some()  {
+            println!("this should not happen ?");
+            // panic!("CODE PATH NOT WRITTEN YET, END OF THE ROAD");
+            // update_constructor_...
+        } else {
+            // TODO INDEX OUT OF BOUNDS
+            // remove ", "
+            let new_construct_args = &new_construct_args[..new_construct_args.len()-2];
+            let where_new_c = php::RE_METH_N_DOC.find(&self.contents).unwrap().start();
+            self.contents = format!(
+                "{}\n{}\npublic function __construct({}) {{\n{}\n}}\n{}",
+                &self.contents[..where_new_c],
+                new_class_vars,
+                new_construct_args,
+                new_construct_lines,
+                &self.contents[where_new_c..]
+            );
+        }
     }
+
     pub fn update_constructor_injection(&mut self, var_type: &str, var_name: &str) {
         println!("update_constructor_injection");
         let construct_match = php::RE_CONSTRUCT.find(&self.contents).unwrap();
@@ -116,6 +124,5 @@ impl FileTransformer {
         let wher = php::RE_METH_N_DOC.find(&self.contents).unwrap().start(); // TODO: WILL EXPLODE
         let before = &self.contents[wher..];
         let after = &self.contents[..wher];
-
     }
 }
