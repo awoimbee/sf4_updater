@@ -72,7 +72,7 @@ impl Php {
                     Some(t) => match class.uses.get(t.as_str()) {
                         Some(f_t) => Some(f_t.clone()),
                         None => {
-                            println!("No use found for {}", t.as_str());
+                            // println!("No use found for {}", t.as_str());
                             Some(t.as_str().to_owned())
                         }
                     },

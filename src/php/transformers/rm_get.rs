@@ -2,6 +2,7 @@ use crate::dealiaser::Dealiaser;
 use crate::php::transformers::FileTransformer;
 use crate::php::*;
 use std::collections::BTreeSet;
+use std::collections::BTreeMap;
 use std::fs::OpenOptions;
 use std::fs::File;
 use std::io::Write;
@@ -9,6 +10,7 @@ use std::io::prelude::*;
 use yaml_rust::Yaml;
 use yaml_rust::YamlLoader;
 use std::time::SystemTime;
+use chrono::{DateTime, Utc};
 
 fn read_controllers_config(file_path: &str) -> BTreeSet<String> {
     println!("read_controllers_config: {}", file_path);
@@ -22,6 +24,21 @@ fn read_controllers_config(file_path: &str) -> BTreeSet<String> {
             return set;
         }
     };
+    if yaml[0]["_defaults"] == Yaml::BadValue
+    || yaml[0]["_defaults"]["autowire"] == Yaml::BadValue
+    || yaml[0]["_defaults"]["autowire"].as_bool().unwrap_or(false) != true
+    || yaml[0]["_defaults"]["public"] == Yaml::BadValue
+    || yaml[0]["_defaults"]["public"].as_bool().unwrap_or(false) != true {
+        let yml_header = concat!(
+            " services:\n",
+            "   _defaults:\n",
+            "     autowire: true\n",
+            "     public: true\n"
+        );
+        eprintln!("/!\\ {} NEEDS to contain the following:\n{}\n", file_path, yml_header);
+    }
+
+
     let services = match &yaml[0]["services"] {
         Yaml::BadValue => return set,
         s => s.as_hash().unwrap(),
@@ -44,7 +61,6 @@ impl Php {
         let c_r = crate::CONTROLLERS_YML.read().unwrap();
         let conf_set = read_controllers_config(c_r.as_ref());
         let mut conf_to_add: Vec<&str> = Vec::new();
-        // let mut conf_added = false;
 
         for class_name in pile_reader.iter() {
             println!("\tName {}", class_name);
@@ -52,7 +68,10 @@ impl Php {
                 conf_to_add.push(class_name);
             }
             // vec of (typeName, varName)
-            let mut to_add_to_construt: Vec<(String, String)> = Vec::new();
+            // let mut to_add_to_construt: Vec<(String, String)> = Vec::new();
+
+            // BTreeMap<VarType, VarName>
+            let mut to_add_to_construt: BTreeMap<String, String> = BTreeMap::new();
 
             let classes_r = self.classes.read().unwrap();
             let class_mutex = classes_r.get(class_name).unwrap().clone();
@@ -113,16 +132,18 @@ impl Php {
 
                     println!("replace {} by $this->{}", full_match.as_str(), var_name);
                     if class.construct_args.len() == 0 {
-                        class
-                            .uses
-                            .insert(service_short_name.to_owned(), service_fname.clone());
+                        class.uses.insert(
+                            service_short_name.to_owned(),
+                            service_fname.clone()
+                        );
+                        // println!("Class uses add: {:30} -> {}", service_short_name, service_fname);
                         ft.reader_replace(
                             fmatch_bounds.0,
                             fmatch_bounds.1,
                             &format!("$this->{}", var_name),
                         );
-                        to_add_to_construt.push((service_short_name.to_owned(), var_name));
-                        // ft.new_constructor_injection(service_short_name, &var_name);
+                        to_add_to_construt.insert(service_short_name.to_owned(), var_name);
+                        // to_add_to_construt.push((service_short_name.to_owned(), var_name));
                     } else {
                         println!("FUCKING TODO");
                         ft.reader_skip(fmatch_bounds.1);
@@ -131,29 +152,26 @@ impl Php {
                 // println!("\t\t{:50} => {}: {}", get_alias, var_name, service_fname);
                 // ft.reader_skip(fmatch_bounds.1);
                 // continue;
-                break;
+                // break;
             }
             ft.rewrite_uses(&class);
             ft.add_to_constructor(&to_add_to_construt);
             ft.write_file(&class.path);
         }
-        let mut yml_w_handle = match OpenOptions::new().create(true).append(true).open(c_r.as_ref() as &str) {
-            Ok(f) => f,
-            Err(e) => {
-                println!("\nCould not open controllers conf ({})", e);
-                return;
-            }
-        };
-        let yml_header = concat!(
-            "services:\n",
-            "  _defaults:\n",
-            "    autowire: true\n",
-            "    public: true\n"
-        );
-        yml_w_handle.write(format!("\n# Auto-generated at {:?}\n", SystemTime::now()).as_bytes()).unwrap();
-        yml_w_handle.write(yml_header.as_bytes()).unwrap();
-        for s in conf_to_add {
-            yml_w_handle.write(format!("  {}: ~\n", s).as_bytes()).unwrap();
+        if conf_to_add.len() > 0 {
+            let mut yml_w_handle = match OpenOptions::new().create(true).append(true).open(c_r.as_ref() as &str) {
+                Ok(f) => f,
+                Err(e) => {
+                    println!("\nCould not open controllers conf ({})", e);
+                    return;
+                }
+            };
+            let new_yml = format!(
+                "\n# Auto-generated at {}\n{}",
+                Utc::now(),
+                conf_to_add.iter().map(|s| format!("  {}: ~\n", s)).collect::<String>()
+            );
+            yml_w_handle.write(new_yml.as_bytes()).unwrap();
         }
     }
 }

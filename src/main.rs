@@ -76,6 +76,7 @@ fn main() {
     f_find::f_find(&work_dir, ".php", |s| php.clone().add_from_php(s));
     // f_find::f_find(&symfony_srcs, ".php", |s| php.clone().add_from_php(s));
     // f_find::f_find(&project_srcs, ".php", |s| php.clone().add_from_php(s));
+    dealiaser.checkup();
 
     if false {
         php.dealias_get_repository();

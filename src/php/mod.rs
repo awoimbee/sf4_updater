@@ -33,6 +33,12 @@ lazy_static! {
 }
 
 #[derive(Debug)]
+/// Exemple:
+/// ```php
+/// (..)function fn(typeh $name = def_val) {
+///     $this->in_class_name = $name;
+/// }
+/// ```
 struct Arg {
     name: String,
     typeh: Option<String>,
