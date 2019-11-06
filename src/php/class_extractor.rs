@@ -169,8 +169,7 @@ impl Php {
         classes_w.insert(class_full_name.to_owned(), Arc::new(Mutex::new(class)));
         drop(classes_w);
         /* insert class in workstack, if necessary */
-        let work_dir: &str = &crate::WORK_DIR.read().unwrap();
-        if file_path.starts_with(work_dir) {
+        if file_path.starts_with(&crate::G.work_dir) {
             if has_get {
                 // let mut workstack_w = match self.has_get_stack.try_write() {
                 //     Ok(writer) => writer,

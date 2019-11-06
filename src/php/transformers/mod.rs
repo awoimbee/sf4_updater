@@ -1,9 +1,9 @@
 use crate::php;
 use crate::php::Class;
+use std::collections::BTreeMap;
 use std::fs::File;
 use std::fs::OpenOptions;
 use std::io::prelude::*;
-use std::collections::BTreeMap;
 
 mod dealias_get_repository;
 mod rm_get;
@@ -41,7 +41,10 @@ impl FileTransformer {
         self.read_ofst = cap_end + 1 + self.read_ofst;
     }
     pub fn reader(&self) -> &str {
-        &self.contents[self.read_ofst..]
+        match self.read_ofst < self.contents.len() {
+            true => &self.contents[self.read_ofst..],
+            _ => &self.contents[self.contents.len() - 1..],
+        }
     }
     pub fn get_mut(&mut self) -> &mut String {
         &mut self.contents
@@ -102,16 +105,25 @@ impl FileTransformer {
             0 => return,
             _ => ' ',
         };
-        let new_construct_args = args.iter().map(|(t, n)| format!("{} ${},{}", t, n, arg_sep)).collect::<String>();
-        let new_construct_lines = args.iter().map(|(_, n)| format!("$this->{0} = ${0};\n", n)).collect::<String>();
-        let new_class_vars = args.iter().map(|(_, n)| format!("protected ${};\n", n)).collect::<String>();
+        let new_construct_args = args
+            .iter()
+            .map(|(t, n)| format!("{} ${},{}", t, n, arg_sep))
+            .collect::<String>();
+        let new_construct_lines = args
+            .iter()
+            .map(|(_, n)| format!("$this->{0} = ${0};\n", n))
+            .collect::<String>();
+        let new_class_vars = args
+            .iter()
+            .map(|(_, n)| format!("protected ${};\n", n))
+            .collect::<String>();
 
-        if php::RE_CONSTRUCT.find(&self.contents).is_some()  {
+        if php::RE_CONSTRUCT.find(&self.contents).is_some() {
             panic!("CODE PATH NOT WRITTEN YET, END OF THE ROAD");
         } else {
             // TODO INDEX OUT OF BOUNDS
             // remove ", "
-            let new_construct_args = &new_construct_args[..new_construct_args.len()-2];
+            let new_construct_args = &new_construct_args[..new_construct_args.len() - 2];
             let where_new_c = php::RE_METH_N_DOC.find(&self.contents).unwrap().start();
             self.contents = format!(
                 "{}\n{}\npublic function __construct({}) {{\n{}\n}}\n{}",
@@ -124,14 +136,14 @@ impl FileTransformer {
         }
     }
 
-    pub fn update_constructor_injection(&mut self, var_type: &str, var_name: &str) {
-        println!("update_constructor_injection");
-        let construct_match = php::RE_CONSTRUCT.find(&self.contents).unwrap();
-        //TODO
-    }
-    pub fn add_class_var(&mut self, typeh: &str, var_name: &str) {
-        let wher = php::RE_METH_N_DOC.find(&self.contents).unwrap().start(); // TODO: WILL EXPLODE
-        let before = &self.contents[wher..];
-        let after = &self.contents[..wher];
-    }
+    // pub fn update_constructor_injection(&mut self, var_type: &str, var_name: &str) {
+    //     println!("update_constructor_injection");
+    //     let construct_match = php::RE_CONSTRUCT.find(&self.contents).unwrap();
+    //     //TODO
+    // }
+    // pub fn add_class_var(&mut self, typeh: &str, var_name: &str) {
+    //     let wher = php::RE_METH_N_DOC.find(&self.contents).unwrap().start(); // TODO: WILL EXPLODE
+    //     let before = &self.contents[wher..];
+    //     let after = &self.contents[..wher];
+    // }
 }

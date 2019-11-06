@@ -1,0 +1,19 @@
+# cargo +nightly run --release
+
+entity_search_dirs:
+  - ["AppMyBundle", "App\\MyBundle\\Entity\\"]
+  - ["AppMyOtherBundle", "App\\MyOtherBundle\\Entity\\"]
+
+namespace_search_dirs:
+  - '/src/'
+  - '/vendor/'
+
+work_dir: "../git_repo/src/wathever/"
+controllers_yml: "controllers_conf.yml"
+
+project_root: "../git_repo/"
+project_conf: "../git_repo/app/config"
+project_srcs: "../git_repo/src/"
+
+additionnal_service_aliases:
+  - ["doctrine.orm.entity_manager", "Doctrine\\ORM\\EntityManagerInterface"]

@@ -1,85 +1,67 @@
+#![feature(try_trait)]
+// FFS I KNOW WHAT I'M DOING. I'M USING A TRANSMUTE IN AN UNSAFE AND I STILL NEED THIS
+#![allow(mutable_transmutes)]
+
 #[macro_use]
 extern crate clap;
 #[macro_use]
 extern crate lazy_static;
-// extern crate yaml_rust;
 
 mod dealiaser;
 mod f_find;
+mod conf;
 mod php;
 
 use dealiaser::Dealiaser;
-use std::sync::RwLock;
+use f_find::f_find;
+use conf::*;
 
-static NAMESPACE_SEARCH_DIRS: &'static [&'static str] =
-    &["/src/", "/vendor/", "/src/Meero/DataFixtures/"];
-
-static ENTITY_SEARCH_DIRS: &'static [(&'static str, &'static str)] = &[
-    ("MeeroApiBundle", "Meero\\ApiBundle\\Entity\\"),
-    ("MeeroMediaBundle", "Meero\\MediaBundle\\Entity\\"),
-    ("MeeroShootBundle", "Meero\\ShootBundle\\Entity\\"),
-    ("MeeroShowcaseBundle", "Meero\\ShowcaseBundle\\Entity\\"),
-];
+#[derive(Debug)]
+pub struct Globals {
+    pub project_root: String,
+    pub project_conf: String,
+    pub project_srcs: String,
+    pub work_dir: String,
+    pub controllers_yml: String,
+    pub namespace_search_dirs: Vec<String>,
+    pub entity_search_dirs: Vec<(String, String)>,
+}
 
 lazy_static! {
-    /// Don't ever try to .write() this !
-    static ref PROJECT_ROOT: RwLock<String> = RwLock::new(String::new());
-    static ref WORK_DIR: RwLock<String> = RwLock::new(String::new());
-    static ref CONTROLLERS_YML: RwLock<String> = RwLock::new(String::new());
+    static ref G: Globals = Globals::new();
 }
 
 // TODO: parse XML config
 // TODO: add slog (https://github.com/slog-rs/term/blob/master/examples/compact-color.rs)
 fn main() {
     let arg_matches = clap_app!(myapp =>
-        (version: "0.1")
+        (version: "0.2")
         (author: "Arthur W. <arthur.woimbee@gmail.com>")
-        (about: "Does awesome things")
-        (@arg PROJECT_FD: +required "Sets where to look for php and yml files")
-        (@arg CONTROLLERS_CONF_YML: +required "Sets where to write controller service declarations")
-        (@arg WORK_DIR: +required "Sets where to update php files")
-        // (@arg debug: -d ... "Sets the level of debugging information")
-    )
-    .get_matches();
-
-    let project_root = {
-        PROJECT_ROOT
-            .write()
-            .unwrap()
-            .push_str(arg_matches.value_of("PROJECT_FD").unwrap());
-        &PROJECT_ROOT.read().unwrap()
-    };
-    let work_dir = {
-        WORK_DIR
-            .write()
-            .unwrap()
-            .push_str(arg_matches.value_of("WORK_DIR").unwrap());
-        &WORK_DIR.read().unwrap()
-    };
-    let controllers_conf = {
-        CONTROLLERS_YML
-            .write()
-            .unwrap()
-            .push_str(arg_matches.value_of("CONTROLLERS_CONF_YML").unwrap());
-        &CONTROLLERS_YML.read().unwrap()
-    };
-
-    let project_conf = format!("{}/app/config", project_root);
-    let project_srcs = format!("{}/src/Meero", project_root);
-    let symfony_srcs = format!("{}/vendor", project_root);
+        (about: "Helps you to update your sf3 project to sf4 & higher")
+        (@arg PROJECT_FD: +takes_value --project_root -r "Path to your symfony project")
+        (@arg CONTROLLERS_CONF_YML: +takes_value --controllers_yml -y "Path to file where controllers conf will be written")
+        (@arg WORK_DIR: +takes_value --work_dir -w "Dir under which modifications will be done")
+        (@arg CONF_FILE: +takes_value --conf_file -c "Conf. file to use")
+        (@arg DEALIAS_REP: --dealias_getrepo -a "Transformer: dialias `getRopository()` statements")
+        (@arg RM_GET: --rm_get -b "Transformer: remove `container->get()` statements")
+    ).get_matches();
 
     let mut dealiaser = Dealiaser::new();
     let mut php = php::Php::new();
 
-    f_find::f_find(&project_conf, ".yml", |s| dealiaser.clone().add_from_yml(s));
-    f_find::f_find(&project_srcs, ".yml", |s| dealiaser.clone().add_from_yml(s));
-    f_find::f_find(&work_dir, ".php", |s| php.clone().add_from_php(s));
-    // f_find::f_find(&symfony_srcs, ".php", |s| php.clone().add_from_php(s));
-    // f_find::f_find(&project_srcs, ".php", |s| php.clone().add_from_php(s));
+    load_conf(&arg_matches, &mut dealiaser);
+    load_args(&arg_matches);
+
+    let d = &mut dealiaser; // for `cargo fmt`
+    f_find(&G.work_dir, ".php", |s| php.clone().add_from_php(s));
+    f_find(&G.project_conf, ".yml", |s| d.clone().add_from_yml(s));
+    f_find(&G.project_srcs, ".yml", |s| d.clone().add_from_yml(s));
     dealiaser.checkup();
 
-    if false {
+    if arg_matches.is_present("DEALIAS_REP") {
         php.dealias_get_repository();
     }
-    php.rm_get(&dealiaser);
+    if arg_matches.is_present("RM_GET") {
+        php.rm_get(&dealiaser);
+    }
 }

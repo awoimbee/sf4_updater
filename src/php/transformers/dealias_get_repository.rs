@@ -1,7 +1,7 @@
 use crate::php;
 use crate::php::resolve_namespace::*;
-// use crate::php::*;
 use crate::php::transformers::FileTransformer;
+use colored::*;
 
 impl php::Php {
     pub fn dealias_get_repository(&mut self) {
@@ -28,7 +28,10 @@ impl php::Php {
                 let entity_full_name = match entity_dealias(repo_alias) {
                     Some(full_name) => full_name,
                     None => {
-                        eprintln!("Could not dealias entity: {}", repo_alias);
+                        eprintln!(
+                            "{}",
+                            format!("\t\tCould not dealias entity: {}", repo_alias).red()
+                        );
                         let end = repo_alias_cap.end().clone();
                         ft.reader_skip(end);
                         continue;
@@ -40,8 +43,12 @@ impl php::Php {
                     Some(use_entity) => {
                         if use_entity != &entity_full_name {
                             println!(
-                                "/!\\ Name conflict for {} ({}) in {}",
-                                entity_name, entity_full_name, class.path
+                                "{}",
+                                format!(
+                                    "\t\tName conflict for {} ({}) in {}",
+                                    entity_name, entity_full_name, class.path
+                                )
+                                .red()
                             );
                             let end = repo_alias_cap.end();
                             ft.reader_skip(end);

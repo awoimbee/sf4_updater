@@ -1,44 +1,54 @@
 use crate::dealiaser::Dealiaser;
 use crate::php::transformers::FileTransformer;
 use crate::php::*;
-use std::collections::BTreeSet;
+use chrono::Utc;
+use colored::*;
 use std::collections::BTreeMap;
+use std::collections::BTreeSet;
 use std::fs::OpenOptions;
-use std::fs::File;
 use std::io::Write;
-use std::io::prelude::*;
 use yaml_rust::Yaml;
 use yaml_rust::YamlLoader;
-use std::time::SystemTime;
-use chrono::{DateTime, Utc};
 
 fn read_controllers_config(file_path: &str) -> BTreeSet<String> {
-    println!("read_controllers_config: {}", file_path);
     let mut ft = FileTransformer::new(file_path);
     let mut set = BTreeSet::new();
 
     let yaml = match YamlLoader::load_from_str(ft.get_mut()) {
         Ok(y) => y,
         Err(e) => {
-            eprintln!("/!\\invalid Yaml in `{}`: {}", file_path, e);
+            println!("/!\\invalid Yaml in `{}`: {}", file_path, e);
             return set;
         }
     };
-    if yaml[0]["_defaults"] == Yaml::BadValue
-    || yaml[0]["_defaults"]["autowire"] == Yaml::BadValue
-    || yaml[0]["_defaults"]["autowire"].as_bool().unwrap_or(false) != true
-    || yaml[0]["_defaults"]["public"] == Yaml::BadValue
-    || yaml[0]["_defaults"]["public"].as_bool().unwrap_or(false) != true {
+
+    if yaml.len() == 0 || yaml[0]["services"] == Yaml::BadValue {
+        return set;
+    }
+
+    if yaml[0]["services"]["_defaults"] == Yaml::BadValue
+        || yaml[0]["services"]["_defaults"]["autowire"] == Yaml::BadValue
+        || yaml[0]["services"]["_defaults"]["autowire"]
+            .as_bool()
+            .unwrap_or(false)
+            != true
+        || yaml[0]["services"]["_defaults"]["public"] == Yaml::BadValue
+        || yaml[0]["services"]["_defaults"]["public"]
+            .as_bool()
+            .unwrap_or(false)
+            != true
+    {
         let yml_header = concat!(
             " services:\n",
             "   _defaults:\n",
             "     autowire: true\n",
             "     public: true\n"
         );
-        eprintln!("/!\\ {} NEEDS to contain the following:\n{}\n", file_path, yml_header);
+        eprintln!(
+            "{}",
+            format!("{} NEEDS to contain:\n{}", file_path, yml_header).red()
+        );
     }
-
-
     let services = match &yaml[0]["services"] {
         Yaml::BadValue => return set,
         s => s.as_hash().unwrap(),
@@ -49,28 +59,20 @@ fn read_controllers_config(file_path: &str) -> BTreeSet<String> {
     return set;
 }
 
-
-
 impl Php {
-    // fn rm_get_transform()
-
     pub fn rm_get(&mut self, dealiaser: &Dealiaser) {
         println!("rm_get");
         let pile_reader = self.has_get_stack.read().unwrap();
 
-        let c_r = crate::CONTROLLERS_YML.read().unwrap();
-        let conf_set = read_controllers_config(c_r.as_ref());
+        let conf_set = read_controllers_config(&crate::G.controllers_yml);
         let mut conf_to_add: Vec<&str> = Vec::new();
 
         for class_name in pile_reader.iter() {
-            println!("\tName {}", class_name);
+            println!("\t{}:", class_name);
+
             if !conf_set.contains(class_name) {
                 conf_to_add.push(class_name);
             }
-            // vec of (typeName, varName)
-            // let mut to_add_to_construt: Vec<(String, String)> = Vec::new();
-
-            // BTreeMap<VarType, VarName>
             let mut to_add_to_construt: BTreeMap<String, String> = BTreeMap::new();
 
             let classes_r = self.classes.read().unwrap();
@@ -80,17 +82,17 @@ impl Php {
 
             if class.construct_args.len() == 0 && class.parent.is_some() {
                 let parent_class_name = class.parent.as_ref().unwrap();
-                if self
-                    .load_class(parent_class_name)
-                    .is_none()
-                {
-                    println!("\t\tCannot load parent class `{}`", parent_class_name);
+                if self.load_class(parent_class_name).is_none() {
+                    println!("\t\t{} `{}`", "Cannot load class".red(), parent_class_name);
                     continue;
                 }
                 let classes_r = self.classes.read().unwrap();
                 let parent = classes_r.get(parent_class_name).unwrap();
                 if parent.lock().unwrap().construct_args.len() > 0 {
-                    println!("\t\tCannot update constructors from parent & shit right now");
+                    println!(
+                        "\t\t{}",
+                        "Cannot create constructor that constructs parent right now".red()
+                    );
                     continue;
                 }
             }
@@ -100,22 +102,23 @@ impl Php {
             while let Some(get_cap) = RE_GET.captures(ft.reader()) {
                 let full_match = get_cap.get(0).unwrap();
                 let alias_match = get_cap.get(1).unwrap();
-
                 let fmatch_bounds = (full_match.start(), full_match.end());
-                let amatch_bounds = (alias_match.start(), alias_match.end());
 
                 let get_alias = alias_match.as_str();
                 let service_fname = match dealiaser.dealias(get_alias) {
                     Some(nspace) => nspace,
                     None => {
-                        println!("\t\tCould not dealias `{}` !", get_alias);
+                        println!("\t\t{} `{}` !", "Could not dealias".yellow(), get_alias);
                         ft.reader_skip(fmatch_bounds.1);
                         continue;
                     }
                 };
 
-                if let Some(arg) = class.construct_arg_type(&service_fname) {
-                    println!("SERVICE IS ALREADY INJECTED, TODO");
+                if let Some(_arg) = class.construct_arg_type(&service_fname) {
+                    println!(
+                        "\t\t{}",
+                        "Service already injected, code path not written".red()
+                    );
                     ft.reader_skip(fmatch_bounds.1);
                     continue;
                 } else {
@@ -130,46 +133,53 @@ impl Php {
                         *p = c as u8;
                     }
 
-                    println!("replace {} by $this->{}", full_match.as_str(), var_name);
                     if class.construct_args.len() == 0 {
-                        class.uses.insert(
-                            service_short_name.to_owned(),
-                            service_fname.clone()
+                        println!(
+                            "{}",
+                            format!("\t\treplace {} by $this->{}", full_match.as_str(), var_name)
+                                .green()
                         );
-                        // println!("Class uses add: {:30} -> {}", service_short_name, service_fname);
+                        class
+                            .uses
+                            .insert(service_short_name.to_owned(), service_fname.clone());
                         ft.reader_replace(
                             fmatch_bounds.0,
                             fmatch_bounds.1,
                             &format!("$this->{}", var_name),
                         );
                         to_add_to_construt.insert(service_short_name.to_owned(), var_name);
-                        // to_add_to_construt.push((service_short_name.to_owned(), var_name));
                     } else {
-                        println!("FUCKING TODO");
+                        println!(
+                            "\t\t{}",
+                            "Need to update existing constructor, code path not written".red()
+                        );
                         ft.reader_skip(fmatch_bounds.1);
                     }
                 }
-                // println!("\t\t{:50} => {}: {}", get_alias, var_name, service_fname);
-                // ft.reader_skip(fmatch_bounds.1);
-                // continue;
-                // break;
             }
             ft.rewrite_uses(&class);
             ft.add_to_constructor(&to_add_to_construt);
             ft.write_file(&class.path);
         }
         if conf_to_add.len() > 0 {
-            let mut yml_w_handle = match OpenOptions::new().create(true).append(true).open(c_r.as_ref() as &str) {
+            let mut yml_w_handle = match OpenOptions::new()
+                .create(true)
+                .append(true)
+                .open(&crate::G.controllers_yml)
+            {
                 Ok(f) => f,
                 Err(e) => {
-                    println!("\nCould not open controllers conf ({})", e);
+                    println!("\t\tCould not open controllers conf ({})", e);
                     return;
                 }
             };
             let new_yml = format!(
                 "\n# Auto-generated at {}\n{}",
                 Utc::now(),
-                conf_to_add.iter().map(|s| format!("  {}: ~\n", s)).collect::<String>()
+                conf_to_add
+                    .iter()
+                    .map(|s| format!("  {}: ~\n", s))
+                    .collect::<String>()
             );
             yml_w_handle.write(new_yml.as_bytes()).unwrap();
         }

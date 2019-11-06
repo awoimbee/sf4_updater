@@ -4,18 +4,21 @@ use std::path::Path;
 /// Returns path (../meero/src/ShootBundle/ClassThing.php)
 /// search_dir is optional, it's the first directory to look for the class in
 pub fn namespace_to_path(full_name: &str) -> Option<String> {
-    let project_root = crate::PROJECT_ROOT.read().unwrap();
     let name_sep_id = match full_name.rfind('\\') {
         Some(i) => i + 1,
-        None => 0
+        None => 0,
     };
     let file_name = &full_name[name_sep_id..]; // yolo
     let partial_path = &full_name[..name_sep_id].replace("\\", "/");
 
-    // let partial_path = format!("{}{}.php", partial_path, file_name);
-    for namespace_root in crate::NAMESPACE_SEARCH_DIRS {
-        let path = format!("{}{}{}{}.php", project_root, namespace_root, partial_path, file_name);
-        // println!("Test path: {}", path);
+    for namespace_root in &crate::G.namespace_search_dirs {
+        let path = format!(
+            "{}{}{}{}.php",
+            crate::G.project_root,
+            namespace_root,
+            partial_path,
+            file_name
+        );
         if Path::new(&path).exists() {
             return Some(path);
         }
@@ -31,8 +34,8 @@ pub fn entity_dealias(full_name: &str) -> Option<String> {
     let nspace_alias = &full_name[..sep];
     let cname = &full_name[sep + 1..];
 
-    for (g_alias, g_nspace) in crate::ENTITY_SEARCH_DIRS {
-        if *g_alias == nspace_alias {
+    for (g_alias, g_nspace) in &crate::G.entity_search_dirs {
+        if g_alias == nspace_alias {
             return Some(format!("{}{}", g_nspace, cname));
         }
     }

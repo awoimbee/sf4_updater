@@ -32,25 +32,3 @@ pub fn f_find(root: &str, ends_with: &str, mut callback: impl FnMut(&str) + Clon
         f_find(&entry, ends_with, callback.clone());
     }
 }
-
-// pub fn f_find_first_dir<'a>(root: &str, name: &str, is_file: bool) -> Option<&'a str> {
-//     let meta = match fs::metadata(&root) {
-//         Ok(m) => m,
-//         Err(e) => {
-//             eprintln!("Error: {} ('{}')", e, root);
-//             return None;
-//         }
-//     };
-//     let entries = match fs::read_dir(&root) {
-//         Ok(e) => e,
-//         Err(_e) => {
-//             eprintln!("Could not read directory {}", root);
-//             return None;
-//         }
-//     };
-//     for entry in entries {
-//         let entry = entry.unwrap().path().to_str().unwrap().to_owned();
-
-//         f_find(&entry, ends_with, callback.clone());
-//     }
-// }

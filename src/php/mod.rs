@@ -76,22 +76,22 @@ impl Class {
             has_get_repository: false,
         }
     }
-    pub fn construct_arg_named(&self, name: &str) -> Option<&Arg> {
-        for ca in self.construct_args.iter() {
-            if ca.name == name {
-                return Some(ca);
-            }
-        }
-        return None;
-    }
-    pub fn construct_arg_named_mut(&mut self, name: &str) -> Option<&mut Arg> {
-        for ca in self.construct_args.iter_mut() {
-            if ca.name == name {
-                return Some(ca);
-            }
-        }
-        return None;
-    }
+    // pub fn construct_arg_named(&self, name: &str) -> Option<&Arg> {
+    //     for ca in self.construct_args.iter() {
+    //         if ca.name == name {
+    //             return Some(ca);
+    //         }
+    //     }
+    //     return None;
+    // }
+    // pub fn construct_arg_named_mut(&mut self, name: &str) -> Option<&mut Arg> {
+    //     for ca in self.construct_args.iter_mut() {
+    //         if ca.name == name {
+    //             return Some(ca);
+    //         }
+    //     }
+    //     return None;
+    // }
     pub fn construct_arg_type(&self, typeh: &str) -> Option<&Arg> {
         for ca in self.construct_args.iter() {
             if ca.typeh.is_some() && ca.typeh.as_ref().unwrap() == typeh {
@@ -100,14 +100,14 @@ impl Class {
         }
         return None;
     }
-    pub fn construct_arg_type_mut(&mut self, typeh: &str) -> Option<&mut Arg> {
-        for ca in self.construct_args.iter_mut() {
-            if ca.typeh.is_some() && ca.typeh.as_ref().unwrap() == typeh {
-                return Some(ca);
-            }
-        }
-        return None;
-    }
+    // pub fn construct_arg_type_mut(&mut self, typeh: &str) -> Option<&mut Arg> {
+    //     for ca in self.construct_args.iter_mut() {
+    //         if ca.typeh.is_some() && ca.typeh.as_ref().unwrap() == typeh {
+    //             return Some(ca);
+    //         }
+    //     }
+    //     return None;
+    // }
 }
 
 impl Php {
@@ -137,7 +137,6 @@ impl Php {
         }
         println!("Resolve namespace failed for {} ??", class_full_name);
         return None;
-
     }
 }
 
@@ -151,29 +150,29 @@ fn class_name(class_full_name: &str) -> &str {
     }
 }
 
-/// Returns slice from the class full name
-///
-/// Ex: `Root\MyBundle\Thing\Service` -> `Root\MyBundle\Thing\`
-///
-/// Ex: `Test` -> `Test`
-fn class_namespace(class_full_name: &str) -> &str {
-    match class_full_name.rfind('\\') {
-        Some(i) => &class_full_name[..i],
-        None => class_full_name,
-    }
-}
+// /// Returns slice from the class full name
+// ///
+// /// Ex: `Root\MyBundle\Thing\Service` -> `Root\MyBundle\Thing\`
+// ///
+// /// Ex: `Test` -> `Test`
+// fn class_namespace(class_full_name: &str) -> &str {
+//     match class_full_name.rfind('\\') {
+//         Some(i) => &class_full_name[..i],
+//         None => class_full_name,
+//     }
+// }
 
-/// Returns slice from path
-/// ## Exemple
-/// ```
-/// let class_path = "Root/src/MyBundle/Service.php"
-/// assert_eq!(file_dir_path(class_path, "Root/src/MyBundle/"));
-///
-/// ```
-fn file_dir_path(class_path: &str) -> &str {
-    assert_eq!("a", "a");
-    match class_path.rfind('/') {
-        Some(i) => &class_path[..i],
-        None => class_path,
-    }
-}
+// /// Returns slice from path
+// /// ## Exemple
+// /// ```
+// /// let class_path = "Root/src/MyBundle/Service.php"
+// /// assert_eq!(file_dir_path(class_path, "Root/src/MyBundle/"));
+// ///
+// /// ```
+// fn file_dir_path(class_path: &str) -> &str {
+//     assert_eq!("a", "a");
+//     match class_path.rfind('/') {
+//         Some(i) => &class_path[..i],
+//         None => class_path,
+//     }
+// }
