@@ -62,8 +62,9 @@ pub fn load_conf(args: &clap::ArgMatches<'_>, dealiaser: &mut Dealiaser) {
         if let Err(_e) = |yaml: &Yaml| -> Result<(), std::option::NoneError> {
             let ns_s_dv = yaml["namespace_search_dirs"].as_vec()?;
             for ns_s_d in ns_s_dv {
-                let search_dir = ns_s_d.as_str()?.to_owned();
-                globals_w.namespace_search_dirs.push(search_dir);
+                let nspace = ns_s_d[0].as_str()?.to_owned();
+                let path = ns_s_d[1].as_str()?.to_owned();
+                globals_w.namespace_search_dirs.push((nspace, path));
             }
             Ok(())
         }(&yaml[0])

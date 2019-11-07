@@ -9,18 +9,21 @@ pub fn namespace_to_path(full_name: &str) -> Option<String> {
         None => 0,
     };
     let file_name = &full_name[name_sep_id..]; // yolo
-    let partial_path = &full_name[..name_sep_id].replace("\\", "/");
+    // let partial_path = &full_name[..name_sep_id].replace("\\", "/");
 
-    for namespace_root in &crate::G.namespace_search_dirs {
-        let path = format!(
-            "{}{}{}{}.php",
-            crate::G.project_root,
-            namespace_root,
-            partial_path,
-            file_name
-        );
-        if Path::new(&path).exists() {
-            return Some(path);
+    for namespace_sd in &crate::G.namespace_search_dirs {
+        if full_name.starts_with(&namespace_sd.0) {
+            let partial_path = full_name[namespace_sd.0.len()..name_sep_id].replace("\\", "/");
+            let path = format!(
+                "{}{}{}{}.php",
+                crate::G.project_root,
+                namespace_sd.1,
+                partial_path,
+                file_name
+            );
+            if Path::new(&path).exists() {
+                return Some(path);
+            }
         }
     }
     None

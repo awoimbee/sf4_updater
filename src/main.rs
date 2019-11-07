@@ -23,7 +23,7 @@ pub struct Globals {
     pub project_srcs: String,
     pub work_dir: String,
     pub controllers_yml: String,
-    pub namespace_search_dirs: Vec<String>,
+    pub namespace_search_dirs: Vec<(String, String)>,
     pub entity_search_dirs: Vec<(String, String)>,
 }
 

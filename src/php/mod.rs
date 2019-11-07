@@ -16,7 +16,9 @@ const RSTR_USE: &str = r"\nuse (?P<class>[^ ;]*)(?: as (?P<alias>[^ ;]*))?;";
 const RSTR_CONSTRUCT: &str = r"public function __construct\((?P<args>[^)]*)\)[^{]*\{";
 const RSTR_METH_N_DOC: &str =
     r"(?:/\*\*(?:[*][^/]|[^*])*\*/\s*)?\n[ \t]*(?:public|private|protected)?[ \t]*function [^ (]*";
-const RSTR_GET: &str = r"\$this->get\('(.*?)'\)"; // .get(0): $this->get; .get(1): class
+const RSTR_GET: &str = r"(?:(?:\$this)|(?:\$container)|(?:\$[^-$ ]*->getContainer\(\))|(?:\$[^-$ ]*->container))->get\('(?P<alias>.*?)'\)";
+
+//  r"\$this->get\('(.*?)'\)"; // .get(0): $this->get; .get(1): class
 /// Only finds the getrepository that uses the 'alias' name
 /// // .get(0): $this->get; .get(1): class
 const RSTR_GETREPOSITORY_ALIAS: &str = r"->getRepository\('(.*?:.*?)'\)";
@@ -135,7 +137,7 @@ impl Php {
             }
             // println!("BIG FRICK: {} from {}", class_full_name, class_path);
         }
-        println!("Resolve namespace failed for {} ??", class_full_name);
+        // println!("Resolve namespace failed for {} ??", class_full_name);
         None
     }
 }
