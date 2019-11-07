@@ -51,7 +51,10 @@ impl Dealiaser {
             let s_name = s_name.as_str().unwrap();
             let s_alias = match s_opts["alias"].as_str() {
                 Some(s_alias) => s_alias,
-                None => continue,
+                None => match s_opts["class"].as_str() {
+                    Some(s_psr) => s_psr,
+                    None => continue,
+                },
             };
             let (namespaced, pointed) = match s_name.contains("\\") {
                 true => (s_name, s_alias),

@@ -105,6 +105,8 @@ impl FileTransformer {
             0 => return,
             _ => ' ',
         };
+        let where_new_c = php::RE_METH_N_DOC.find(&self.contents).unwrap().start();
+        // let txt_before_construct = &self.contents[..where_new_c];
         let new_construct_args = args
             .iter()
             .map(|(t, n)| format!("{} ${},{}", t, n, arg_sep))
@@ -115,16 +117,36 @@ impl FileTransformer {
             .collect::<String>();
         let new_class_vars = args
             .iter()
-            .map(|(_, n)| format!("protected ${};\n", n))
+            .map(|(_, n)| {
+                let var_def = format!("protected ${};\n", n);
+                // if txt_before_construct.contains(&var_def) {  // very yolo
+                if self.contents.contains(&var_def) {
+                    return String::new();
+                }
+                format!("protected ${};\n", n)
+            })
             .collect::<String>();
 
         if php::RE_CONSTRUCT.find(&self.contents).is_some() {
-            panic!("CODE PATH NOT WRITTEN YET, END OF THE ROAD");
+            let cap = php::RE_CONSTRUCT.captures(&self.contents).unwrap();
+            let where_args = cap.name("args").unwrap().start();
+            let where_body = cap.get(0).unwrap().end();
+
+            self.contents = format!(
+                "{}\n{}\n{}{}{}\n{}{}",
+                &self.contents[..where_new_c],
+                new_class_vars,
+                &self.contents[where_new_c..where_args],
+                new_construct_args,
+                &self.contents[where_args..where_body],
+                new_construct_lines,
+                &self.contents[where_body..],
+            );
+
+        // panic!("CODE PATH NOT WRITTEN YET, END OF THE ROAD");
         } else {
-            // TODO INDEX OUT OF BOUNDS
-            // remove ", "
             let new_construct_args = &new_construct_args[..new_construct_args.len() - 2];
-            let where_new_c = php::RE_METH_N_DOC.find(&self.contents).unwrap().start();
+
             self.contents = format!(
                 "{}\n{}\npublic function __construct({}) {{\n{}\n}}\n{}",
                 &self.contents[..where_new_c],

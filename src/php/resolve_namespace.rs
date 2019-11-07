@@ -9,7 +9,7 @@ pub fn namespace_to_path(full_name: &str) -> Option<String> {
         None => 0,
     };
     let file_name = &full_name[name_sep_id..]; // yolo
-    // let partial_path = &full_name[..name_sep_id].replace("\\", "/");
+                                               // let partial_path = &full_name[..name_sep_id].replace("\\", "/");
 
     for namespace_sd in &crate::G.namespace_search_dirs {
         if full_name.starts_with(&namespace_sd.0) {
