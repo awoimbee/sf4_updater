@@ -59,7 +59,6 @@ impl php::Php {
                         class
                             .uses
                             .insert(entity_name.to_owned(), entity_full_name.clone());
-                        ()
                     }
                 };
                 let new = format!("{}::class", entity_name);

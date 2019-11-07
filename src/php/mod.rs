@@ -98,7 +98,7 @@ impl Class {
                 return Some(ca);
             }
         }
-        return None;
+        None
     }
     // pub fn construct_arg_type_mut(&mut self, typeh: &str) -> Option<&mut Arg> {
     //     for ca in self.construct_args.iter_mut() {
@@ -136,7 +136,7 @@ impl Php {
             // println!("BIG FRICK: {} from {}", class_full_name, class_path);
         }
         println!("Resolve namespace failed for {} ??", class_full_name);
-        return None;
+        None
     }
 }
 

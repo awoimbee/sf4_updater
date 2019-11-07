@@ -23,7 +23,7 @@ pub fn namespace_to_path(full_name: &str) -> Option<String> {
             return Some(path);
         }
     }
-    return None;
+    None
 }
 
 /// get entity alias ('MeeroShootBundle:Location')
@@ -39,5 +39,5 @@ pub fn entity_dealias(full_name: &str) -> Option<String> {
             return Some(format!("{}{}", g_nspace, cname));
         }
     }
-    return None;
+    None
 }

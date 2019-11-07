@@ -22,7 +22,7 @@ impl FileTransformer {
             Ok(mut f) => drop(f.read_to_string(&mut contents).unwrap_or(0)),
         };
         FileTransformer {
-            contents: contents,
+            contents,
             read_ofst: 0,
         }
     }

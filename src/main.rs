@@ -7,14 +7,14 @@ extern crate clap;
 #[macro_use]
 extern crate lazy_static;
 
+mod conf;
 mod dealiaser;
 mod f_find;
-mod conf;
 mod php;
 
+use conf::*;
 use dealiaser::Dealiaser;
 use f_find::f_find;
-use conf::*;
 
 #[derive(Debug)]
 pub struct Globals {

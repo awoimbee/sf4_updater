@@ -1,9 +1,9 @@
+use crate::dealiaser::Dealiaser;
+use crate::Globals;
 use std::fs::File;
 use std::io::prelude::*;
 use yaml_rust::Yaml;
 use yaml_rust::YamlLoader;
-use crate::Globals;
-use crate::dealiaser::Dealiaser;
 
 const DEFAULT_CONF_FILE: &str = "./config.yml";
 
@@ -49,7 +49,8 @@ pub fn load_conf(args: &clap::ArgMatches<'_>, dealiaser: &mut Dealiaser) {
             for e_s_d in esdv {
                 let entity_nspace_alias = e_s_d[0].as_str()?.to_owned();
                 let entity_nspace = e_s_d[1].as_str()?.to_owned();
-                globals_w.entity_search_dirs
+                globals_w
+                    .entity_search_dirs
                     .push((entity_nspace_alias, entity_nspace));
             }
             Ok(())

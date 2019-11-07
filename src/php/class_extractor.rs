@@ -130,7 +130,7 @@ impl Php {
         };
         class.parent = class_parent_full_name;
         class.path = path.to_owned();
-        return Some((class_full_name, class));
+        Some((class_full_name, class))
     }
 
     fn set_parent(&self, file_path: &str, class_full_name: &str, class: &Class) {
@@ -141,7 +141,6 @@ impl Php {
         if some_parent.is_some() {
             let mut class = some_parent.unwrap().lock().unwrap();
             class.children.push(class_full_name.to_owned());
-            return;
         } else if let Some(parent_path) = namespace_to_path(parent_name) {
             drop(classes_r);
             self.add_from_php(&parent_path);

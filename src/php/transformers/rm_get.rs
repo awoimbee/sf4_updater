@@ -56,7 +56,7 @@ fn read_controllers_config(file_path: &str) -> BTreeSet<String> {
     for (s_name, _s_opts) in services {
         set.insert(s_name.as_str().unwrap().to_owned());
     }
-    return set;
+    set
 }
 
 impl Php {
