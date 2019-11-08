@@ -76,10 +76,13 @@ impl FileTransformer {
         let uses_cap = php::RE_ALL_USE.find(&self.contents).unwrap(); // wil break
         let use_start = uses_cap.start();
         let uses_end = uses_cap.end();
-        let new_uses: String = class
-            .uses
+
+        let mut sorted_uses: Vec<_> = class.uses.iter().collect();
+        sorted_uses.sort_by(|a, b| a.1.to_lowercase().cmp(&b.1.to_lowercase()));
+
+        let new_uses: String = sorted_uses
             .iter()
-            .map(|(k, v)| match v.ends_with(k) {
+            .map(|(k, v)| match v.ends_with(k.as_str()) {
                 true => format!("\nuse {};", v),
                 false => format!("\nuse {} as {};", v, k),
             })
