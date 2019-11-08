@@ -83,7 +83,6 @@ impl Php {
         let mut ft = FileTransformer::new(&class.path);
 
         while let Some(get_cap) = RE_GET.captures(ft.reader()) {
-
             let full_match = get_cap.get(0).unwrap();
             let alias_match = get_cap.get(1).unwrap();
             let fmatch_bounds = (full_match.start(), full_match.end());

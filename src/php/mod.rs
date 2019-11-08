@@ -13,8 +13,10 @@ const RSTR_CLASS: &str =
 const RSTR_NAMESPACE: &str = r"\nnamespace ([^ ;]*);\n"; // .get(1): namespace;
 const RSTR_ALL_USE: &str = r"(?:\nuse[^;]*;)+"; // CAP WHOLE GROUP
 const RSTR_USE: &str = r"\nuse (?P<class>[^ ;]*)(?: as (?P<alias>[^ ;]*))?;";
-const RSTR_CONSTRUCT: &str = r"public function __construct\((?P<args>[^)]*)\)[^{]*\{";
+const RSTR_CONSTRUCT: &str =
+    r"(?:/\*\*(?:[*][^/]|[^*])*\*/\s*)?public function __construct\((?P<args>[^)]*)\)[^{]*\{";
 const RSTR_METH_N_DOC: &str =
+    //            doc-block            |       |         visibility         |     |        | name |     args
     r"(?:/\*\*(?:[*][^/]|[^*])*\*/\s*)?\n[ \t]*(?:public|private|protected)?[ \t]*function [^ (]*";
 const RSTR_GET: &str = r"(?:(?:\$this)|(?:\$container)|(?:\$[^-$ ]*->getContainer\(\))|(?:\$[^-$ ]*->container))->get\('(?P<alias>.*?)'\)";
 

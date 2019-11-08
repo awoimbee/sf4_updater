@@ -95,80 +95,95 @@ impl FileTransformer {
         )
     }
 
-    /// ##Add Args to constructor
-    /// &Vec<(String, String)> -> &Vec<VarType, VarName>
-    pub fn add_to_constructor(&mut self, args: &BTreeMap<String, String>) {
-        // no time
-        // let arg_sep = match args.len() {
-        //     0 => return,
-        //     1..=3 => ' ',
-        //     _ => '\n'
-        // };
-        let arg_sep = match args.len() {
-            0 => return,
-            _ => ' ',
-        };
-        let where_new_c = php::RE_METH_N_DOC.find(&self.contents).unwrap().start();
-        // let txt_before_construct = &self.contents[..where_new_c];
-        let new_construct_args = args
-            .iter()
-            .map(|(t, n)| format!("{} ${},{}", t, n, arg_sep))
-            .collect::<String>();
-        let new_construct_lines = args
-            .iter()
-            .map(|(_, n)| format!("$this->{0} = ${0};\n", n))
-            .collect::<String>();
-        let new_class_vars = args
-            .iter()
-            .map(|(_, n)| {
-                let var_def = format!("protected ${};\n", n);
-                // if txt_before_construct.contains(&var_def) {  // very yolo
-                if self.contents.contains(&var_def) {
-                    return String::new();
-                }
-                format!("protected ${};\n", n)
-            })
-            .collect::<String>();
-
-        if php::RE_CONSTRUCT.find(&self.contents).is_some() {
-            let cap = php::RE_CONSTRUCT.captures(&self.contents).unwrap();
-            let where_args = cap.name("args").unwrap().start();
-            let where_body = cap.get(0).unwrap().end();
-
-            self.contents = format!(
-                "{}\n{}\n{}{}{}\n{}{}",
-                &self.contents[..where_new_c],
-                new_class_vars,
-                &self.contents[where_new_c..where_args],
-                new_construct_args,
-                &self.contents[where_args..where_body],
-                new_construct_lines,
-                &self.contents[where_body..],
-            );
-
-        // panic!("CODE PATH NOT WRITTEN YET, END OF THE ROAD");
+    fn class_contains_var(&self, var: &str) -> bool {
+        if self.contents.contains(&format!("    private ${};\n", var))
+            || self
+                .contents
+                .contains(&format!("    protected ${};\n", var))
+            || self.contents.contains(&format!("    public ${};\n", var))
+        {
+            true
         } else {
-            let new_construct_args = &new_construct_args[..new_construct_args.len() - 2];
-
-            self.contents = format!(
-                "{}\n{}\npublic function __construct({}) {{\n{}\n}}\n{}",
-                &self.contents[..where_new_c],
-                new_class_vars,
-                new_construct_args,
-                new_construct_lines,
-                &self.contents[where_new_c..]
-            );
+            false
         }
     }
 
-    // pub fn update_constructor_injection(&mut self, var_type: &str, var_name: &str) {
-    //     println!("update_constructor_injection");
-    //     let construct_match = php::RE_CONSTRUCT.find(&self.contents).unwrap();
-    //     //TODO
-    // }
-    // pub fn add_class_var(&mut self, typeh: &str, var_name: &str) {
-    //     let wher = php::RE_METH_N_DOC.find(&self.contents).unwrap().start(); // TODO: WILL EXPLODE
-    //     let before = &self.contents[wher..];
-    //     let after = &self.contents[..wher];
-    // }
+    fn new_constructor(&mut self, args: &BTreeMap<String, String>) {
+        if args.len() == 0 {
+            return;
+        }
+        let where_new_c = php::RE_METH_N_DOC.find(&self.contents).unwrap().start();
+
+        let mut new_construct_args = String::new();
+        let mut new_construct_lines = String::new();
+        let mut new_class_vars = String::new();
+        for (typ, name) in args {
+            new_construct_args.push_str(&format!("{} ${}, ", typ, name));
+            new_construct_lines.push_str(&format!("$this->{0} = ${0};\n", name));
+            if !self.class_contains_var(name) {
+                new_class_vars.push_str(&format!("protected ${};\n", name));
+            }
+        }
+        let new_construct_args = &new_construct_args[..new_construct_args.len() - 2];
+        self.contents = format!(
+            "{}\n{}\npublic function __construct({}) {{\n{}\n}}\n{}",
+            &self.contents[..where_new_c],
+            new_class_vars,
+            new_construct_args,
+            new_construct_lines,
+            &self.contents[where_new_c..]
+        );
+    }
+
+    fn update_constructor(&mut self, args: &BTreeMap<String, String>) {
+        if args.len() == 0 {
+            return;
+        }
+        let construct_cap = php::RE_CONSTRUCT.captures(&self.contents).unwrap();
+        let where_new_c = construct_cap.get(0).unwrap().start();
+        let args_cap = construct_cap.name("args").unwrap();
+        let existing_args = &self.contents[args_cap.start()..args_cap.end()];
+
+        let mut new_construct_args = String::new();
+        let mut new_construct_lines = String::new();
+        let mut new_class_vars = String::new();
+        for (typ, name) in args {
+            if existing_args.contains(&format!("${}", name)) {
+                // FAILURE POINT
+                continue;
+            }
+            new_construct_args.push_str(&format!("{} ${}, ", typ, name));
+            new_construct_lines.push_str(&format!("$this->{0} = ${0};\n", name));
+            if !self.class_contains_var(name) {
+                new_class_vars.push_str(&format!("protected ${};\n", name));
+            }
+        }
+
+        let where_args = construct_cap.name("args").unwrap().start();
+        let where_body = construct_cap.get(0).unwrap().end();
+
+        self.contents = format!(
+            "{}\n{}\n{}{}{}\n{}{}",
+            &self.contents[..where_new_c],
+            new_class_vars,
+            &self.contents[where_new_c..where_args],
+            new_construct_args,
+            &self.contents[where_args..where_body],
+            new_construct_lines,
+            &self.contents[where_body..],
+        );
+    }
+
+    /// ##Add Args to constructor
+    /// &Vec<(String, String)> -> &Vec<VarType, VarName>
+    pub fn add_to_constructor(&mut self, args: &BTreeMap<String, String>) {
+        if args.len() == 0 {
+            return;
+        }
+        if php::RE_CONSTRUCT.find(&self.contents).is_some() {
+            self.update_constructor(args);
+        } else {
+            self.new_constructor(args);
+        }
+    }
 }
