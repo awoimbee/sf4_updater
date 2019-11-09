@@ -135,8 +135,8 @@ impl Php {
 
     fn set_parent(&self, file_path: &str, class_full_name: &str, class: &Class) {
         let classes_r = self.classes.read().unwrap();
-        let parent_name = &class.parent.clone().unwrap();
-        let some_parent = classes_r.get(parent_name);
+        let parent_name = class.parent.as_ref().unwrap();
+        let some_parent = classes_r.get(parent_name.as_str());
 
         if some_parent.is_some() {
             let mut class = some_parent.unwrap().lock().unwrap();
@@ -146,7 +146,7 @@ impl Php {
             self.add_from_php(&parent_path);
             let succesful_add = {
                 let classes_r = self.classes.read().unwrap();
-                classes_r.get(parent_name).is_some()
+                classes_r.get(parent_name.as_str()).is_some()
             };
             if succesful_add {
                 self.set_parent(file_path, class_full_name, class); // retry add
@@ -163,9 +163,10 @@ impl Php {
         if let Some(_) = &class.parent {
             self.set_parent(file_path, class_full_name, &class);
         }
+        let class_full_name: Arc<str> = Arc::from(class_full_name);
         /* insert class */
         let mut classes_w = self.classes.write().unwrap();
-        classes_w.insert(class_full_name.to_owned(), Arc::new(Mutex::new(class)));
+        classes_w.insert(class_full_name.clone(), Arc::new(Mutex::new(class)));
         drop(classes_w);
         /* insert class in workstack, if necessary */
         if file_path.starts_with(&crate::G.work_dir) {
@@ -175,7 +176,7 @@ impl Php {
                 //     Err(_e) => { println!("get wtf is happening w/ {} ??!", file_path ); return; }
                 // };
                 let mut workstack_w = self.has_get_stack.write().unwrap();
-                workstack_w.push(class_full_name.to_owned());
+                workstack_w.push(class_full_name.clone());
             }
             if has_get_repository {
                 // let mut workstack_w = match self.has_get_repository_stack.try_write() {
@@ -183,7 +184,7 @@ impl Php {
                 //     Err(_e) => { println!("getrepo wtf is happening w/ {} ??!", file_path ); return; }
                 // };
                 let mut workstack_w = self.has_get_repository_stack.write().unwrap();
-                workstack_w.push(class_full_name.to_owned());
+                workstack_w.push(class_full_name.clone());
             }
         }
         // println!("class added {}", class_full_name);

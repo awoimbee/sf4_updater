@@ -14,6 +14,7 @@ struct FileTransformer {
     read_ofst: usize,
 }
 
+/* General methods */
 impl FileTransformer {
     pub fn new(file_name: &str) -> Self {
         let mut contents = String::new();
@@ -71,6 +72,7 @@ impl FileTransformer {
     }
 }
 
+/* uses specifics */
 impl FileTransformer {
     fn rewrite_uses(&mut self, class: &Class) {
         let uses_cap = php::RE_ALL_USE.find(&self.contents).unwrap(); // wil break
@@ -94,7 +96,10 @@ impl FileTransformer {
             &self.contents[uses_end..]
         )
     }
+}
 
+/* Class constructor specifics */
+impl FileTransformer {
     fn class_contains_var(&self, var: &str) -> bool {
         if self.contents.contains(&format!("    private ${};\n", var))
             || self

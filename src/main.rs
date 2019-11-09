@@ -15,6 +15,8 @@ mod php;
 use conf::*;
 use dealiaser::Dealiaser;
 use f_find::f_find;
+use std::sync::Arc;
+use std::sync::Mutex;
 
 #[derive(Debug)]
 pub struct Globals {
@@ -47,21 +49,22 @@ fn main() {
     ).get_matches();
 
     let mut dealiaser = Dealiaser::new();
-    let mut php = php::Php::new();
+    let php = Arc::new(Mutex::new(php::Php::new()));
+    let mut php_w = php.lock().unwrap();
 
     load_conf(&arg_matches, &mut dealiaser);
     load_args(&arg_matches);
 
     let d = &mut dealiaser; // for `cargo fmt`
-    f_find(&G.work_dir, ".php", |s| php.clone().add_from_php(s));
+    f_find(&G.work_dir, ".php", |s| php_w.add_from_php(s));
     f_find(&G.project_conf, ".yml", |s| d.clone().add_from_yml(s));
     f_find(&G.project_srcs, ".yml", |s| d.clone().add_from_yml(s));
     dealiaser.checkup();
 
     if arg_matches.is_present("DEALIAS_REP") {
-        php.dealias_get_repository();
+        php_w.dealias_get_repository();
     }
     if arg_matches.is_present("RM_GET") {
-        php.rm_get(&dealiaser);
+        php_w.rm_get(&dealiaser);
     }
 }

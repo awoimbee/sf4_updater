@@ -70,7 +70,7 @@ impl Php {
                 return;
             }
             let classes_r = self.classes.read().unwrap();
-            let parent = classes_r.get(parent_class_name).unwrap();
+            let parent = classes_r.get(parent_class_name.as_str()).unwrap();
             if parent.lock().unwrap().construct_args.len() > 0 {
                 println!(
                     "\t\t{}",

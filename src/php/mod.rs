@@ -61,11 +61,11 @@ struct Class {
     has_get_repository: bool,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct Php {
-    classes: Arc<RwLock<HashMap<String, Arc<Mutex<Class>>>>>,
-    has_get_stack: Arc<RwLock<Vec<String>>>,
-    has_get_repository_stack: Arc<RwLock<Vec<String>>>,
+    classes: RwLock<HashMap<Arc<str>, Arc<Mutex<Class>>>>,
+    has_get_stack: RwLock<Vec<Arc<str>>>,
+    has_get_repository_stack: RwLock<Vec<Arc<str>>>,
 }
 
 impl Class {
@@ -116,9 +116,9 @@ impl Class {
 
 impl Php {
     pub fn new() -> Php {
-        let classes = Arc::new(RwLock::new(HashMap::new()));
-        let has_get_stack = Arc::new(RwLock::new(Vec::new()));
-        let has_get_repository_stack = Arc::new(RwLock::new(Vec::new()));
+        let classes = RwLock::new(HashMap::new());
+        let has_get_stack = RwLock::new(Vec::new());
+        let has_get_repository_stack = RwLock::new(Vec::new());
         Php {
             classes,
             has_get_stack,
@@ -127,7 +127,14 @@ impl Php {
     }
 
     pub fn load_class(&self, class_full_name: &str) -> Option<()> {
-        if self.classes.read().unwrap().get(class_full_name).is_some() {
+        if self
+            .classes
+            .read()
+            .unwrap()
+            .clone()
+            .get(class_full_name)
+            .is_some()
+        {
             return Some(());
         }
 
