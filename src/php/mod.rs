@@ -53,7 +53,7 @@ struct Arg {
 #[derive(Debug)]
 struct Class {
     path: String,
-    children: Vec<String>,
+    children: Vec<Arc<str>>,
     parent: Option<String>,
     uses: HashMap<String, String>, // Alias -- ClassFullName
     construct_args: Vec<Arg>,      // if 0 -> no constructor
@@ -126,28 +126,30 @@ impl Php {
         }
     }
 
-    pub fn load_class(&self, class_full_name: &str) -> Option<()> {
-        if self
-            .classes
-            .read()
-            .unwrap()
-            .clone()
-            .get(class_full_name)
-            .is_some()
-        {
-            return Some(());
+    pub fn load_class(&self, class_psr: &str) -> Result<(), Box<dyn std::error::Error>> {
+        let classes_r = self.classes.read().unwrap().clone();
+        if classes_r.get(class_psr).is_some() {
+            return Ok(());
         }
-
-        if let Some(class_path) = resolve_namespace::namespace_to_path(class_full_name) {
-            // println!("add_from_php: {} {}", class_full_name, class_path);
-            self.add_from_php(&class_path);
-            if let Some(_) = self.classes.read().unwrap().get(class_full_name) {
-                return Some(());
+        let class_path = match resolve_namespace::namespace_to_path(class_psr) {
+            Some(cp) => cp,
+            None => {
+                return Err(Box::new(std::io::Error::new(
+                    std::io::ErrorKind::Other,
+                    format!("Could not resolve namespace {}", class_psr),
+                )))
             }
-            // println!("BIG FRICK: {} from {}", class_full_name, class_path);
+        };
+        match self.add_from_php(&class_path) {
+            true => (),
+            false => {
+                return Err(Box::new(std::io::Error::new(
+                    std::io::ErrorKind::Other,
+                    format!("Could not read/comprehend {}", class_path),
+                )))
+            }
         }
-        // println!("Resolve namespace failed for {} ??", class_full_name);
-        None
+        Ok(())
     }
 }
 

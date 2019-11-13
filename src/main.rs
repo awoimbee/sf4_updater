@@ -56,7 +56,7 @@ fn main() {
     load_args(&arg_matches);
 
     let d = &mut dealiaser; // for `cargo fmt`
-    f_find(&G.work_dir, ".php", |s| php_w.add_from_php(s));
+    f_find(&G.work_dir, ".php", |s| drop(php_w.add_from_php(s)));
     f_find(&G.project_conf, ".yml", |s| d.clone().add_from_yml(s));
     f_find(&G.project_srcs, ".yml", |s| d.clone().add_from_yml(s));
     dealiaser.checkup();

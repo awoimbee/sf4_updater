@@ -179,7 +179,7 @@ impl FileTransformer {
         );
     }
 
-    /// ##Add Args to constructor
+    /// ## Add Args to constructor
     /// &Vec<(String, String)> -> &Vec<VarType, VarName>
     pub fn add_to_constructor(&mut self, args: &BTreeMap<String, String>) {
         if args.len() == 0 {

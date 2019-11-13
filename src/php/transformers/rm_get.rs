@@ -17,7 +17,7 @@ impl Php {
         let conf_set = read_controllers_config(&crate::G.controllers_yml);
         let mut conf_to_add: Vec<&str> = Vec::new();
         for class_name in pile_reader.iter() {
-            print!("\t{}: ", class_name);
+            println!("\t{}: ", class_name);
             self.rm_get_in_class(class_name, &conf_set, &mut conf_to_add, dealiaser);
         }
         if conf_to_add.len() == 0 {
@@ -58,26 +58,30 @@ impl Php {
         let mut to_add_to_construt: BTreeMap<String, String> = BTreeMap::new();
 
         let classes_r = self.classes.read().unwrap();
-        let class_mutex = classes_r.get(class_name).unwrap().clone();
+        let class_mut = classes_r.get(class_name).unwrap().clone();
         drop(classes_r);
-        let mut class = class_mutex.lock().unwrap();
-        println!("{}:", class.path);
 
-        if class.construct_args.len() == 0 && class.parent.is_some() {
-            let parent_class_name = class.parent.as_ref().unwrap();
-            if self.load_class(parent_class_name).is_none() {
-                println!("\t\t{} `{}`", "Cannot load class".red(), parent_class_name);
+        let parent_constructor = match some_parent_has_constructor(&self, class_name) {
+            Ok(v) => v,
+            Err(e) => {
+                println!("\t\t{}", format!("{}", e).red());
                 return;
             }
-            let classes_r = self.classes.read().unwrap();
-            let parent = classes_r.get(parent_class_name.as_str()).unwrap();
-            if parent.lock().unwrap().construct_args.len() > 0 {
-                println!(
-                    "\t\t{}",
-                    "Cannot create constructor that constructs parent right now".red()
-                );
-                return;
-            }
+        };
+
+        let mut class = class_mut.lock().unwrap();
+        println!("\t-> {}:", class.path);
+
+        if class.children.len() > 0 {
+            println!("\t\tCannot update children as of now");
+            return;
+        }
+        if class.construct_args.len() == 0 && parent_constructor {
+            println!(
+                "\t\t{}",
+                "Cannot create constructor that constructs parent right now".red()
+            );
+            return;
         }
 
         let mut ft = FileTransformer::new(&class.path);
@@ -187,4 +191,18 @@ fn read_controllers_config(file_path: &str) -> BTreeSet<String> {
         set.insert(s_name.as_str().unwrap().to_owned());
     }
     set
+}
+
+/// LOCKS MUTEX ON CLASS
+fn some_parent_has_constructor(php: &Php, class: &str) -> Result<bool, Box<dyn std::error::Error>> {
+    let classes_r = php.classes.read().unwrap();
+    let mut class = classes_r.get(class).unwrap().lock().unwrap();
+    while let Some(parent_name) = class.parent.as_ref() {
+        php.load_class(&parent_name)?;
+        class = classes_r.get(parent_name.as_str()).unwrap().lock().unwrap();
+        if class.construct_args.len() > 0 {
+            return Ok(true);
+        }
+    }
+    return Ok(false);
 }

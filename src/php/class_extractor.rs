@@ -11,16 +11,17 @@ use crate::php::{Class, Php};
 // pub interface
 impl Php {
     /// /!\ Write lock on classes
-    pub fn add_from_php(&self, file_path: &str) {
+    pub fn add_from_php(&self, file_path: &str) -> bool {
         let mut file = File::open(file_path).unwrap();
         let mut contents = String::new();
         file.read_to_string(&mut contents).unwrap_or(0);
 
         let (class_full_name, class) = match self.extract_php(&contents, file_path.to_owned()) {
             Some((class_fname, class)) => (class_fname, class),
-            None => return,
+            None => return false,
         };
-        self.add_class(file_path, &class_full_name, class);
+        self.add_class(file_path, Arc::from(class_full_name), class);
+        true
     }
 }
 
@@ -101,46 +102,43 @@ impl Php {
             class.has_get_repository = true;
         }
 
-        let (class_full_name, class_parent_full_name) = {
-            let caps = match php::RE_CLASS.captures(&php) {
-                Some(c) => c,
-                None => return None,
-            };
-            /* get short names from regex */
-            let class_sname = caps.name("name").map_or("", |m| m.as_str());
-            let class_nspace = format!("{}{}", class_nspace, class_sname);
+        let class_caps = match php::RE_CLASS.captures(&php) {
+            Some(c) => c,
+            None => return None,
+        };
+        let class_fname = format!(
+            "{}{}",
+            class_nspace,
+            class_caps.name("name").unwrap().as_str()
+        );
 
-            let parent_sname = caps.name("parent").map_or("", |m| m.as_str());
-            let parent_nspace = match class.uses.get(parent_sname) {
-                Some(s) => Some(s.clone()),
+        let parent_fname = match class_caps.name("parent") {
+            Some(parent_sname) => match class.uses.get(parent_sname.as_str()) {
+                Some(full_name) => Some(full_name.clone()),
                 None => {
-                    if parent_sname.is_empty() {
-                        None
-                    } else {
-                        // parent namespace not explicit, lets use the implicit namespace
-                        let parent_full_name = format!("{}{}", class_nspace, parent_sname);
-                        match namespace_to_path(&parent_full_name).is_some() {
-                            true => Some(parent_full_name),
-                            false => None,
-                        }
+                    let parent_full_name = format!("{}{}", class_nspace, parent_sname.as_str());
+                    match namespace_to_path(&parent_full_name).is_some() {
+                        true => Some(parent_full_name),
+                        false => None,
                     }
                 }
-            };
-            (class_nspace, parent_nspace)
+            },
+            None => None,
         };
-        class.parent = class_parent_full_name;
+
+        class.parent = parent_fname;
         class.path = path.to_owned();
-        Some((class_full_name, class))
+        Some((class_fname, class))
     }
 
-    fn set_parent(&self, file_path: &str, class_full_name: &str, class: &Class) {
+    fn set_as_parent_child(&self, file_path: &str, class_full_name: Arc<str>, class: &Class) {
         let classes_r = self.classes.read().unwrap();
         let parent_name = class.parent.as_ref().unwrap();
         let some_parent = classes_r.get(parent_name.as_str());
 
         if some_parent.is_some() {
             let mut class = some_parent.unwrap().lock().unwrap();
-            class.children.push(class_full_name.to_owned());
+            class.children.push(class_full_name.clone());
         } else if let Some(parent_path) = namespace_to_path(parent_name) {
             drop(classes_r);
             self.add_from_php(&parent_path);
@@ -149,21 +147,20 @@ impl Php {
                 classes_r.get(parent_name.as_str()).is_some()
             };
             if succesful_add {
-                self.set_parent(file_path, class_full_name, class); // retry add
+                self.set_as_parent_child(file_path, class_full_name, class); // retry add
             }
         }
     }
 
     /// /!\ Write lock on classes & has_*_stack
-    fn add_class(&self, file_path: &str, class_full_name: &str, class: Class) {
+    fn add_class(&self, file_path: &str, class_full_name: Arc<str>, class: Class) {
         let has_get = class.has_get;
         let has_get_repository = class.has_get_repository;
 
         /* Set curent class as child of parent class, if necessary */
         if let Some(_) = &class.parent {
-            self.set_parent(file_path, class_full_name, &class);
+            self.set_as_parent_child(file_path, class_full_name.clone(), &class);
         }
-        let class_full_name: Arc<str> = Arc::from(class_full_name);
         /* insert class */
         let mut classes_w = self.classes.write().unwrap();
         classes_w.insert(class_full_name.clone(), Arc::new(Mutex::new(class)));
