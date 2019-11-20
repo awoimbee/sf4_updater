@@ -7,6 +7,7 @@ use std::io::prelude::*;
 
 mod dealias_get_repository;
 mod rm_get;
+mod dealias_paths;
 
 #[derive(Debug)]
 struct FileTransformer {

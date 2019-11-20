@@ -5,8 +5,8 @@ entity_search_dirs:
   - ["AppMyOtherBundle", "App\\MyOtherBundle\\Entity\\"]
 
 namespace_search_dirs:
-  - '/src/'
-  - '/vendor/'
+  - ['MyApp', '/src/']
+  - ["Symfony\\Component\\Console\\", "./vendor/symfony/console/"]
 
 work_dir: "../git_repo/src/wathever/"
 controllers_yml: "controllers_conf.yml"
@@ -17,3 +17,13 @@ project_srcs: "../git_repo/src/"
 
 additionnal_service_aliases:
   - ["doctrine.orm.entity_manager", "Doctrine\\ORM\\EntityManagerInterface"]
+
+root_namespace: 'MyProject'
+
+bundles:
+  - name: My1
+    path: ../git_repo/src/SomeFolder/My1Bundle
+  - name: My2
+    path: ../git_repo/src/My2Bundle
+  - name: IAmCrazy
+    path: /IAmCrazyBundle

@@ -1,6 +1,8 @@
-use crate::dealiaser::Dealiaser;
+use super::dealiaser::Dealiaser;
+use crate::f_find::f_find;
 use crate::php::transformers::FileTransformer;
 use crate::php::*;
+use crate::G;
 use chrono::Utc;
 use colored::*;
 use std::collections::BTreeMap;
@@ -11,14 +13,25 @@ use yaml_rust::Yaml;
 use yaml_rust::YamlLoader;
 
 impl Php {
-    pub fn rm_get(&mut self, dealiaser: &Dealiaser) {
+    pub fn rm_get(&mut self) {
         println!("rm_get");
-        let pile_reader = self.has_get_stack.read().unwrap();
+
+        let mut dealiaser = Dealiaser::new();
+        let d = &mut dealiaser;
+        f_find(&G.project_conf, ".yml", |s| d.clone().add_from_yml(s));
+        f_find(&G.project_srcs, ".yml", |s| d.clone().add_from_yml(s));
+        for (psr, alias) in &G.dealiaser_additionals {
+            dealiaser.add(&psr, &alias);
+        }
+        dealiaser.checkup();
+
+
+        let pile_reader = self.get_stack.read().unwrap();
         let conf_set = read_controllers_config(&crate::G.controllers_yml);
         let mut conf_to_add: Vec<&str> = Vec::new();
         for class_name in pile_reader.iter() {
             println!("\t{}: ", class_name);
-            self.rm_get_in_class(class_name, &conf_set, &mut conf_to_add, dealiaser);
+            self.rm_get_in_class(class_name, &conf_set, &mut conf_to_add, &dealiaser);
         }
         if conf_to_add.len() == 0 {
             return;
@@ -76,13 +89,15 @@ impl Php {
             println!("\t\tCannot update children as of now");
             return;
         }
-        if class.construct_args.len() == 0 && parent_constructor {
-            println!(
-                "\t\t{}",
-                "Cannot create constructor that constructs parent right now".red()
-            );
-            return;
-        }
+        // if class.construct_args.len() == 0 && parent_constructor {
+        //     // todo: if name ends w/ Command, fuck it and just add parent::__construct(null)
+        //     // if class_name.ends_with(pat: P)
+        //     println!(
+        //         "\t\t{}",
+        //         "Cannot create constructor that constructs parent right now".red()
+        //     );
+        //     return;
+        // }
 
         let mut ft = FileTransformer::new(&class.path);
 
@@ -114,16 +129,15 @@ impl Php {
                 ft.reader_skip(fmatch_bounds.1);
                 continue;
             } else {
-                let service_short_name = match service_fname.rfind('\\') {
+                let mut service_short_name = match service_fname.rfind('\\') {
                     Some(i) => &service_fname[i + 1..],
                     None => &service_fname,
                 };
-                let mut var_name = service_short_name.to_owned();
-                unsafe {
-                    let p = (&mut var_name).as_mut_ptr();
-                    let c = (*p as char).to_ascii_lowercase();
-                    *p = c as u8;
+                if service_short_name.ends_with("Interface") {
+                    service_short_name = &service_short_name[..service_short_name.rfind("Interface").unwrap()];
                 }
+                let mut var_name = service_short_name.to_owned();
+                var_name.get_mut(0..1).unwrap().make_ascii_lowercase();
 
                 println!(
                     "{}",

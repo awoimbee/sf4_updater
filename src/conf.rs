@@ -1,9 +1,9 @@
-use crate::dealiaser::Dealiaser;
 use crate::Globals;
 use std::fs::File;
 use std::io::prelude::*;
 use yaml_rust::Yaml;
 use yaml_rust::YamlLoader;
+use colored::*;
 
 const DEFAULT_CONF_FILE: &str = "./config.yml";
 
@@ -17,13 +17,16 @@ impl Globals {
             controllers_yml: String::new(),
             namespace_search_dirs: Vec::new(),
             entity_search_dirs: Vec::new(),
+            dealiaser_additionals: Vec::new(),
+            bundles: Vec::new(),
+            root_namespace: String::new(),
         }
     }
 }
 
 /// /!\ Mutates G (unsafe)
 /// Should only be called once, in main, in the set-up phase
-pub fn load_conf(args: &clap::ArgMatches<'_>, dealiaser: &mut Dealiaser) {
+pub fn load_conf(args: &clap::ArgMatches<'_>) {
     /* Get config file name/path */
     let conf_file = match args.value_of("CONF_FILE") {
         Some(cf) => cf,
@@ -74,6 +77,32 @@ pub fn load_conf(args: &clap::ArgMatches<'_>, dealiaser: &mut Dealiaser) {
                 conf_file
             );
         }
+        /* Append additionnal_service_aliases dealiaser */
+        if let Err(_e) = |yaml: &Yaml| -> Result<(), std::option::NoneError> {
+            let a_s_a_v = yaml["additionnal_service_aliases"].as_vec()?;
+            for a_s_a in a_s_a_v {
+                let pointy_name = a_s_a[0].as_str()?.to_owned();
+                let psr_name = a_s_a[1].as_str()?.to_owned();
+                globals_w.dealiaser_additionals.push((psr_name, pointy_name));
+            }
+            Ok(())
+        }(&yaml[0])
+        {
+            println!("{}", "additionnal_service_aliases badly formatted".red());
+        }
+        /* Read bundles */
+        if let Err(_e) = |yaml: &Yaml| -> Result<(), std::option::NoneError> {
+            let a_s_a_v = yaml["bundles"].as_vec()?;
+            for a_s_a in a_s_a_v {
+                let name = a_s_a["name"].as_str()?.to_owned();
+                let path = a_s_a["path"].as_str()?.to_owned();
+                globals_w.bundles.push((name, path));
+            }
+            Ok(())
+        }(&yaml[0])
+        {
+            println!("{}", "bundles badly formatted".red());
+        }
         /* Read every other global variable that's a string */
         let mut pairs = [
             (&mut globals_w.work_dir, "work_dir"),
@@ -81,6 +110,7 @@ pub fn load_conf(args: &clap::ArgMatches<'_>, dealiaser: &mut Dealiaser) {
             (&mut globals_w.project_conf, "project_conf"),
             (&mut globals_w.project_srcs, "project_srcs"),
             (&mut globals_w.controllers_yml, "controllers_yml"),
+            (&mut globals_w.root_namespace, "root_namespace"),
         ];
         for p in pairs.iter_mut() {
             if let Some(value) = yaml[0][p.1].as_str() {
@@ -88,16 +118,7 @@ pub fn load_conf(args: &clap::ArgMatches<'_>, dealiaser: &mut Dealiaser) {
             }
         }
     }
-    /* Append additionnal_service_aliases dealiaser */
-    drop(|yaml: &Yaml| -> Result<(), std::option::NoneError> {
-        let a_s_a_v = yaml["additionnal_service_aliases"].as_vec()?;
-        for a_s_a in a_s_a_v {
-            let pointy_name = a_s_a[0].as_str()?;
-            let psr_name = a_s_a[1].as_str()?;
-            dealiaser.add(psr_name, pointy_name);
-        }
-        Ok(())
-    }(&yaml[0]));
+
 }
 
 /// /!\ Mutates G (unsafe)

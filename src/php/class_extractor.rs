@@ -20,7 +20,7 @@ impl Php {
             Some((class_fname, class)) => (class_fname, class),
             None => return false,
         };
-        self.add_class(file_path, Arc::from(class_full_name), class);
+        self.add_class(&file_path, Arc::from(class_full_name), class);
         true
     }
 }
@@ -172,7 +172,7 @@ impl Php {
                 //     Ok(writer) => writer,
                 //     Err(_e) => { println!("get wtf is happening w/ {} ??!", file_path ); return; }
                 // };
-                let mut workstack_w = self.has_get_stack.write().unwrap();
+                let mut workstack_w = self.get_stack.write().unwrap();
                 workstack_w.push(class_full_name.clone());
             }
             if has_get_repository {
@@ -180,7 +180,7 @@ impl Php {
                 //     Ok(writer) => writer,
                 //     Err(_e) => { println!("getrepo wtf is happening w/ {} ??!", file_path ); return; }
                 // };
-                let mut workstack_w = self.has_get_repository_stack.write().unwrap();
+                let mut workstack_w = self.get_repository_stack.write().unwrap();
                 workstack_w.push(class_full_name.clone());
             }
         }

@@ -1,7 +1,7 @@
 use std::path::Path;
 
-/// full_name: Meero\Shootbundle\ClassThing
-/// Returns path (../meero/src/ShootBundle/ClassThing.php)
+/// full_name: Namespace\MyBundle\ClassThing
+/// Returns path (../root_fd/src/namespace/MyBundle/ClassThing.php)
 /// search_dir is optional, it's the first directory to look for the class in
 pub fn namespace_to_path(full_name: &str) -> Option<String> {
     let name_sep_id = match full_name.rfind('\\') {
@@ -27,8 +27,8 @@ pub fn namespace_to_path(full_name: &str) -> Option<String> {
     None
 }
 
-/// get entity alias ('MeeroShootBundle:Location')
-/// Returns namespace ('Meero\Shootbundle\Entity\Location')
+/// get entity alias ('NspaceMyBundle:Location')
+/// Returns namespace ('Nspace\Mybundle\Entity\Location')
 pub fn entity_dealias(full_name: &str) -> Option<String> {
     let sep = full_name.rfind(':').unwrap_or(0);
 

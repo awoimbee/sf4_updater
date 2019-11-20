@@ -19,8 +19,19 @@ impl Dealiaser {
     }
 
     pub fn add(&mut self, psr: &str, alias: &str) {
+        let psr = psr.to_owned();
+        // let psr = match psr.ends_with("Interface") {
+        //     true => psr.to_owned(),
+        //     false => {
+        //         let interface_psr = format!("{}Interface", psr);
+        //         match namespace_to_path(&interface_psr).is_some() {
+        //             true => interface_psr,
+        //             false => psr.to_owned(),
+        //         }
+        //     }
+        // };
         let mut c = self.classes.write().unwrap();
-        c.insert(alias.to_owned(), psr.to_owned());
+        c.insert(alias.to_owned(), psr);
     }
 
     pub fn dealias(&self, alias: &str) -> Option<String> {
@@ -33,7 +44,7 @@ impl Dealiaser {
 
     pub fn add_from_yml(&mut self, file_path: &str) {
         // println!("Add from yml conf from: {}", file_path);
-        let mut file = File::open(file_path).unwrap();
+        let mut file = File::open(&file_path).unwrap();
         let mut contents = String::new();
         file.read_to_string(&mut contents).unwrap();
         let yaml = match YamlLoader::load_from_str(&contents) {
@@ -43,6 +54,9 @@ impl Dealiaser {
                 return;
             }
         };
+        if yaml.len() != 1 {
+            return;
+        }
         let services = match &yaml[0]["services"] {
             Yaml::BadValue => return,
             s => s.as_hash().unwrap(),
@@ -60,8 +74,7 @@ impl Dealiaser {
                 true => (s_name, s_alias),
                 false => (s_alias, s_name),
             };
-            let mut alias_map = self.classes.write().unwrap();
-            alias_map.insert(pointed.to_owned(), namespaced.to_owned());
+            self.add(namespaced, pointed);
         }
     }
 

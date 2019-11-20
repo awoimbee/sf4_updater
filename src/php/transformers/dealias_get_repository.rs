@@ -6,7 +6,7 @@ use colored::*;
 impl php::Php {
     pub fn dealias_get_repository(&mut self) {
         println!("dealias_get_repository");
-        let pile_reader = self.has_get_repository_stack.read().unwrap();
+        let pile_reader = self.get_repository_stack.read().unwrap();
 
         for class_name in pile_reader.iter() {
             println!("\t{}", class_name);

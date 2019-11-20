@@ -20,9 +20,8 @@ const RSTR_METH_N_DOC: &str =
     r"(?:/\*\*(?:[*][^/]|[^*])*\*/\s*)?\n[ \t]*(?:public|private|protected)?[ \t]*function [^ (]*";
 const RSTR_GET: &str = r"(?:(?:\$this)|(?:\$container)|(?:\$[^-$ ]*->getContainer\(\))|(?:\$[^-$ ]*->container))->get\('(?P<alias>.*?)'\)";
 
-//  r"\$this->get\('(.*?)'\)"; // .get(0): $this->get; .get(1): class
-/// Only finds the getrepository that uses the 'alias' name
-/// // .get(0): $this->get; .get(1): class
+
+
 const RSTR_GETREPOSITORY_ALIAS: &str = r"->getRepository\('(.*?:.*?)'\)";
 
 lazy_static! {
@@ -64,8 +63,9 @@ struct Class {
 #[derive(Debug)]
 pub struct Php {
     classes: RwLock<HashMap<Arc<str>, Arc<Mutex<Class>>>>,
-    has_get_stack: RwLock<Vec<Arc<str>>>,
-    has_get_repository_stack: RwLock<Vec<Arc<str>>>,
+    get_stack: RwLock<Vec<Arc<str>>>,
+    get_repository_stack: RwLock<Vec<Arc<str>>>,
+    unbundle_templates_stack: RwLock<Vec<Arc<str>>>,
 }
 
 impl Class {
@@ -116,13 +116,11 @@ impl Class {
 
 impl Php {
     pub fn new() -> Php {
-        let classes = RwLock::new(HashMap::new());
-        let has_get_stack = RwLock::new(Vec::new());
-        let has_get_repository_stack = RwLock::new(Vec::new());
         Php {
-            classes,
-            has_get_stack,
-            has_get_repository_stack,
+            classes: RwLock::new(HashMap::new()),
+            get_stack: RwLock::new(Vec::new()),
+            get_repository_stack: RwLock::new(Vec::new()),
+            unbundle_templates_stack: RwLock::new(Vec::new()),
         }
     }
 
