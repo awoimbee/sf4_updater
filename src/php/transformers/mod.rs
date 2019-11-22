@@ -7,7 +7,7 @@ use std::io::prelude::*;
 
 mod dealias_get_repository;
 mod rm_get;
-mod dealias_paths;
+mod update_paths;
 
 #[derive(Debug)]
 struct FileTransformer {
@@ -20,7 +20,7 @@ impl FileTransformer {
     pub fn new(file_name: &str) -> Self {
         let mut contents = String::new();
         match File::open(file_name) {
-            Err(e) => eprintln!("Could no open `{}` ({})", file_name, e),
+            Err(e) => eprintln!("Could not open `{}` ({})", file_name, e),
             Ok(mut f) => drop(f.read_to_string(&mut contents).unwrap_or(0)),
         };
         FileTransformer {
@@ -37,15 +37,17 @@ impl FileTransformer {
             replacement,
             &self.contents[after..]
         );
-        self.read_ofst = after;
+        self.read_ofst = before + replacement.len();
     }
     pub fn reader_skip(&mut self, cap_end: usize) {
         self.read_ofst = cap_end + 1 + self.read_ofst;
     }
     pub fn reader(&self) -> &str {
-        match self.read_ofst < self.contents.len() {
+        let clen = self.contents.len();
+        match self.read_ofst < clen {
             true => &self.contents[self.read_ofst..],
-            _ => &self.contents[self.contents.len() - 1..],
+            _ if clen != 0 => &self.contents[clen - 1..],
+            _ => &self.contents,
         }
     }
     pub fn get_mut(&mut self) -> &mut String {
@@ -76,7 +78,13 @@ impl FileTransformer {
 /* uses specifics */
 impl FileTransformer {
     fn rewrite_uses(&mut self, class: &Class) {
-        let uses_cap = php::RE_ALL_USE.find(&self.contents).unwrap(); // wil break
+        let uses_cap = match php::RE_ALL_USE.find(&self.contents) {
+            Some(m) => m,
+            None => {
+                println!("No use statements found, not supported ({})", class.path);
+                return;
+            }
+        };
         let use_start = uses_cap.start();
         let uses_end = uses_cap.end();
 

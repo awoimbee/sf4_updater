@@ -1,2 +1,2 @@
-mod rm_get;
 mod dealiaser;
+mod rm_get;

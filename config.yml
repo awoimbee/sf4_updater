@@ -22,8 +22,6 @@ root_namespace: 'MyProject'
 
 bundles:
   - name: My1
-    path: ../git_repo/src/SomeFolder/My1Bundle
+    path: src/MyProject/My1Bundle
   - name: My2
-    path: ../git_repo/src/My2Bundle
-  - name: IAmCrazy
-    path: /IAmCrazyBundle
+    path: src/MyProject/My2Bundle

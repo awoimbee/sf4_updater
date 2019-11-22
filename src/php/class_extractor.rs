@@ -98,7 +98,7 @@ impl Php {
         if let Some(_) = php::RE_GET.find(&php) {
             class.has_get = true;
         }
-        if let Some(_) = php::RE_GETREPOSITORY_ALIAS.find(&php) {
+        if let Some(_) = php::RE_REPOSITORY_ALIAS.find(&php) {
             class.has_get_repository = true;
         }
 

@@ -1,9 +1,9 @@
 use crate::Globals;
+use colored::*;
 use std::fs::File;
 use std::io::prelude::*;
 use yaml_rust::Yaml;
 use yaml_rust::YamlLoader;
-use colored::*;
 
 const DEFAULT_CONF_FILE: &str = "./config.yml";
 
@@ -83,7 +83,9 @@ pub fn load_conf(args: &clap::ArgMatches<'_>) {
             for a_s_a in a_s_a_v {
                 let pointy_name = a_s_a[0].as_str()?.to_owned();
                 let psr_name = a_s_a[1].as_str()?.to_owned();
-                globals_w.dealiaser_additionals.push((psr_name, pointy_name));
+                globals_w
+                    .dealiaser_additionals
+                    .push((psr_name, pointy_name));
             }
             Ok(())
         }(&yaml[0])
@@ -118,7 +120,6 @@ pub fn load_conf(args: &clap::ArgMatches<'_>) {
             }
         }
     }
-
 }
 
 /// /!\ Mutates G (unsafe)

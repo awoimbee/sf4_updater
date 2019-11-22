@@ -1,27 +1,24 @@
+use crate::f_find::f_find;
 use crate::php;
 use crate::php::resolve_namespace::*;
 use crate::php::transformers::FileTransformer;
+use crate::G;
 use colored::*;
 
 impl php::Php {
     pub fn dealias_get_repository(&mut self) {
         println!("dealias_get_repository");
+        // f_find(&G.work_dir, r".*\.php", |s| dealias_path(s));
         let pile_reader = self.get_repository_stack.read().unwrap();
 
         for class_name in pile_reader.iter() {
             println!("\t{}", class_name);
-            let class_mutex = self
-                .classes
-                .read()
-                .unwrap()
-                .get(class_name)
-                .unwrap()
-                .clone();
-
+            let c_r = self.classes.read().unwrap();
+            let class_mutex = c_r.get(class_name).unwrap().clone();
             let mut class = class_mutex.lock().unwrap();
             let mut ft = FileTransformer::new(&class.path);
 
-            while let Some(getrepo_cap) = php::RE_GETREPOSITORY_ALIAS.captures(ft.reader()) {
+            while let Some(getrepo_cap) = php::RE_REPOSITORY_ALIAS.captures(ft.reader()) {
                 let repo_alias_cap = getrepo_cap.get(1).unwrap();
                 let repo_alias = repo_alias_cap.as_str();
 

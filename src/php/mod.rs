@@ -20,9 +20,9 @@ const RSTR_METH_N_DOC: &str =
     r"(?:/\*\*(?:[*][^/]|[^*])*\*/\s*)?\n[ \t]*(?:public|private|protected)?[ \t]*function [^ (]*";
 const RSTR_GET: &str = r"(?:(?:\$this)|(?:\$container)|(?:\$[^-$ ]*->getContainer\(\))|(?:\$[^-$ ]*->container))->get\('(?P<alias>.*?)'\)";
 
+// const RSTR_GETREPOSITORY_ALIAS: &str = r"->getRepository\('(.*?:.*?)'\)";
 
-
-const RSTR_GETREPOSITORY_ALIAS: &str = r"->getRepository\('(.*?:.*?)'\)";
+const RSTR_REPOSITORY_ALIAS: &str = r#"['"]([^ \n\t\v\r'"/\\:]+Bundle:[^ \n\t\v\r'"/\\:]+)['"]"#;
 
 lazy_static! {
     static ref RE_CLASS: Regex = Regex::new(RSTR_CLASS).unwrap();
@@ -32,7 +32,7 @@ lazy_static! {
     static ref RE_CONSTRUCT: Regex = Regex::new(RSTR_CONSTRUCT).unwrap();
     static ref RE_METH_N_DOC: Regex = Regex::new(RSTR_METH_N_DOC).unwrap();
     static ref RE_GET: Regex = Regex::new(RSTR_GET).unwrap();
-    static ref RE_GETREPOSITORY_ALIAS: Regex = Regex::new(RSTR_GETREPOSITORY_ALIAS).unwrap();
+    static ref RE_REPOSITORY_ALIAS: Regex = Regex::new(RSTR_REPOSITORY_ALIAS).unwrap();
 }
 
 #[derive(Debug)]

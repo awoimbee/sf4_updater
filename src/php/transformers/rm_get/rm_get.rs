@@ -18,13 +18,12 @@ impl Php {
 
         let mut dealiaser = Dealiaser::new();
         let d = &mut dealiaser;
-        f_find(&G.project_conf, ".yml", |s| d.clone().add_from_yml(s));
-        f_find(&G.project_srcs, ".yml", |s| d.clone().add_from_yml(s));
+        f_find(&G.project_conf, r".*\.yml", |s| d.clone().add_from_yml(s));
+        f_find(&G.project_srcs, r".*\.yml", |s| d.clone().add_from_yml(s));
         for (psr, alias) in &G.dealiaser_additionals {
             dealiaser.add(&psr, &alias);
         }
         dealiaser.checkup();
-
 
         let pile_reader = self.get_stack.read().unwrap();
         let conf_set = read_controllers_config(&crate::G.controllers_yml);
@@ -134,7 +133,8 @@ impl Php {
                     None => &service_fname,
                 };
                 if service_short_name.ends_with("Interface") {
-                    service_short_name = &service_short_name[..service_short_name.rfind("Interface").unwrap()];
+                    service_short_name =
+                        &service_short_name[..service_short_name.rfind("Interface").unwrap()];
                 }
                 let mut var_name = service_short_name.to_owned();
                 var_name.get_mut(0..1).unwrap().make_ascii_lowercase();

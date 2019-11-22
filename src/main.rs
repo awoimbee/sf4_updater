@@ -14,8 +14,6 @@ mod php;
 
 use conf::*;
 use f_find::f_find;
-use std::sync::Arc;
-use std::sync::Mutex;
 
 #[derive(Debug)]
 pub struct Globals {
@@ -28,7 +26,7 @@ pub struct Globals {
     pub namespace_search_dirs: Vec<(String, String)>,
     pub entity_search_dirs: Vec<(String, String)>,
     pub dealiaser_additionals: Vec<(String, String)>,
-    pub bundles: Vec<(String, String)> // (name, path)
+    pub bundles: Vec<(String, String)>, // (name, path)
 }
 
 lazy_static! {
@@ -51,25 +49,20 @@ fn main() {
         (@arg DEALIAS_PATHS: --dealias_paths -C "Transformer: remove path aliases")
     ).get_matches();
 
-
-    let php = Arc::new(Mutex::new(php::Php::new()));
-    let mut php_w = php.lock().unwrap();
+    let mut php = php::Php::new();
 
     load_conf(&arg_matches);
     load_args(&arg_matches);
 
-
-    f_find(&G.work_dir, ".php", |s| drop(php_w.add_from_php(s)));
-
-
+    f_find(&G.work_dir, r".*\.php", |s| drop(php.add_from_php(s)));
 
     if arg_matches.is_present("DEALIAS_REP") {
-        php_w.dealias_get_repository();
+        php.dealias_get_repository();
     }
     if arg_matches.is_present("RM_GET") {
-        php_w.rm_get();
+        php.rm_get();
     }
     if arg_matches.is_present("DEALIAS_PATHS") {
-        php_w.dealias_paths();
+        php.update_paths();
     }
 }
