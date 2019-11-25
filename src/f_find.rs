@@ -1,6 +1,8 @@
 use regex::Regex;
 use std::fs;
 
+// If performance becomes an issue: create FileFinder object & construct index
+
 /// finds files inside `root` w/ names that matches
 /// And call `callback` on them.
 pub fn f_find(root: &str, regex_match: &'static str, mut callback: impl FnMut(&str)) {

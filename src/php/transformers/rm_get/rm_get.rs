@@ -98,7 +98,10 @@ impl Php {
         //     return;
         // }
 
-        let mut ft = FileTransformer::new(&class.path);
+        let mut ft = match FileTransformer::new(&class.path) {
+            Some(ft) => ft,
+            None => return,
+        };
 
         while let Some(get_cap) = RE_GET.captures(ft.reader()) {
             let full_match = get_cap.get(0).unwrap();
@@ -161,8 +164,11 @@ impl Php {
 }
 
 fn read_controllers_config(file_path: &str) -> BTreeSet<String> {
-    let mut ft = FileTransformer::new(file_path);
     let mut set = BTreeSet::new();
+    let mut ft = match FileTransformer::new(file_path) {
+        Some(ft) => ft,
+        None => return set,
+    };
 
     let yaml = match YamlLoader::load_from_str(ft.get_mut()) {
         Ok(y) => y,

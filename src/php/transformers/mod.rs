@@ -17,16 +17,27 @@ struct FileTransformer {
 
 /* General methods */
 impl FileTransformer {
-    pub fn new(file_name: &str) -> Self {
+    pub fn new(file_name: &str) -> Option<Self> {
         let mut contents = String::new();
-        match File::open(file_name) {
-            Err(e) => eprintln!("Could not open `{}` ({})", file_name, e),
-            Ok(mut f) => drop(f.read_to_string(&mut contents).unwrap_or(0)),
+        let mut f = match File::open(file_name) {
+            Ok(f) => f,
+            Err(e) => {
+                eprintln!("Could not open {} ({})", file_name, e);
+                return None;
+            }
         };
-        FileTransformer {
+        match f.read_to_string(&mut contents) {
+            Ok(_) => (),
+            Err(e) => {
+                eprintln!("Could not read {} ({})", file_name, e);
+                return None;
+            }
+        };
+
+        Some(FileTransformer {
             contents,
             read_ofst: 0,
-        }
+        })
     }
     pub fn reader_replace(&mut self, re_start: usize, re_end: usize, replacement: &str) {
         let before = re_start + self.read_ofst;

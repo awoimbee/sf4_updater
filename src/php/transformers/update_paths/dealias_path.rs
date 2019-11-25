@@ -9,6 +9,7 @@ pub fn dealias_path(path: &regex::Captures<'_>) -> Result<String, &'static str> 
         _ if path.name("colon").is_some() => dealias_colon_path(path),
         _ if path.name("shortBundle").is_some() => dealias_shortbundle_path(path),
         _ if path.name("short").is_some() => dealias_short_path(path),
+        _ if path.name("std").is_some() => dealias_std_path(path),
         _ => Err("Unknown path format"),
     };
 }
@@ -102,4 +103,8 @@ fn dealias_short_path(bundle_re: &regex::Captures<'_>) -> Result<String, &'stati
     let mut path = format!("{}/Resources/views/{}", bundle_path, path);
     normalize_path_str(&mut path);
     Ok(path)
+}
+
+fn dealias_std_path(path_cap: &regex::Captures<'_>) -> Result<String, &'static str> {
+    Ok(format!("Megapute, Octopute, Hydropute, Triplepute, Aquapute"))
 }
