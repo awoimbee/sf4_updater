@@ -17,7 +17,7 @@ pub fn f_find(root: &str, regex_match: &'static str, mut callback: impl FnMut(&s
             eprintln!("Could not get info for file {} ({})", root, e);
             return;
         }
-        _ => return
+        _ => return,
     };
 
     while let Some(dir) = dir_stack.pop() {
@@ -39,7 +39,7 @@ pub fn f_find(root: &str, regex_match: &'static str, mut callback: impl FnMut(&s
             match () {
                 _ if s_meta.is_dir() => dir_stack.push(s),
                 _ if s_meta.is_file() && reg.is_match(&s) => callback(&s),
-                _ => ()
+                _ => (),
             };
         }
     }

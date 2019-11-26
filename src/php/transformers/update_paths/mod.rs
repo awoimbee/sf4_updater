@@ -1,15 +1,17 @@
 mod dealias_path;
-mod update_view_path;
 mod file_mover;
+mod update_controller_path;
+mod update_view_path;
 
 use super::super::Php;
 use super::FileTransformer;
 use crate::f_find::f_find;
 use crate::G;
-use file_mover::FileMover;
 use dealias_path::dealias_path;
-use update_view_path::update_view_path;
+use file_mover::FileMover;
 use regex::Regex;
+use update_controller_path::update_controller_path;
+use update_view_path::update_view_path;
 
 /// Colon path:
 ///     RootMyBundle:path/inside/Resources/views:filename.type
@@ -32,20 +34,16 @@ impl Php {
         println!("update_paths");
         let mut fm: FileMover = FileMover::new();
 
-        f_find(&G.work_dir, r".*", |s| {
-            foreach_path(s, &mut fm)
-        });
+        f_find(&G.work_dir, r".*", |s| foreach_file(s, &mut fm));
         // paths also need to be updated in ./app/
         f_find(&format!("{}/app", &G.project_root), r".*", |s| {
-            foreach_path(s, &mut fm)
+            foreach_file(s, &mut fm)
         });
         fm.git_mv();
     }
 }
 
-
-
-fn foreach_path(file: &str, fm: &mut FileMover) {
+fn foreach_file(file: &str, fm: &mut FileMover) {
     lazy_static! {
         static ref RE_PATH: Regex = build_path_regex();
     }
@@ -58,7 +56,7 @@ fn foreach_path(file: &str, fm: &mut FileMover) {
     while let Some(path_cap) = RE_PATH.captures(ft.reader()) {
         let start = path_cap.get(0).unwrap().start();
         let end = path_cap.get(0).unwrap().end();
-        let path = match dealias_path(&path_cap) {
+        let path = match dealias_path(&path_cap, file) {
             Ok(p) => p,
             Err(e) => {
                 println!("\tCould not transform path ({}): {}", e, &path_cap[0]);
@@ -66,30 +64,34 @@ fn foreach_path(file: &str, fm: &mut FileMover) {
                 continue;
             }
         };
+        // println!("{:80} -> {}", &path_cap[0], path);
+
         // path to controller -> namespace (`controller: App\Controller\BlogController::list`)
         // path to twig -> relative file path from `templates/` (app/Resources/views at first)
         // path to mjml -> relative path to project_dir ? (gilpfile.js: gulp.task('mjml', function() {)
 
-        if path.contains("/Controller/") {
-
-        }
-
-
-        if path.contains("Resources/views") {
-            match update_view_path(&path, fm) {
-                Ok(path) => ft.reader_replace(start, end, &path),
-                Err(e) => {
-                    println!("{} ({})", e, &path_cap[0]);
-                    ft.reader_skip(end);
-                    continue;
-                }
+        match update_path(&path, fm) {
+            Ok(path) => ft.reader_replace(start, end, &path),
+            Err(e) => {
+                println!("{} ({})", e, &path_cap[0]);
+                ft.reader_skip(end);
+                continue;
             }
-        } else {
-            println!("?: '{:81}' -> '{}'", &path_cap[0], path);
-            ft.reader_skip(end);
-        }
+        };
     }
     ft.write_file(file);
+}
+
+fn update_path(path: &str, fm: &mut FileMover) -> Result<String, &'static str> {
+    if path.contains("/Controller/") {
+        return update_controller_path(&path, fm);
+    }
+    if path.contains("Resources/views") {
+        return update_view_path(&path, fm);
+    }
+    // println!("path not recognised: {}", path);
+    return Err("Path not recognised");
+    // Ok(path.to_owned())
 }
 
 fn build_path_regex() -> Regex {
@@ -98,9 +100,9 @@ fn build_path_regex() -> Regex {
     bundles_reg_str.pop();
     let reg_str = format!(
         concat!(
-            r#"(?P<colon>{root_nspace}(?P<colon_bundle>{bundles})Bundle:(?P<colon_path>[^: ]*):(?P<colon_file>[^()"'\s ]*))"#,
-            r#"|(?P<shortBundle>@{root_nspace}(?P<shortBundle_bundle>{bundles})Bundle/(?P<shortBundle_path>[^()"'\s]*))"#,
-            r#"|(?P<short>@{root_nspace}(?P<short_bundle>{bundles})/(?P<short_path>[^()"'\s]*))"#,
+            r#"(?P<colon>{root_nspace}(?P<colon_bundle>{bundles})Bundle:(?P<colon_path>[^: ]*):(?P<colon_file>[^()"'\s ,{{}}]*))"#,
+            r#"|(?P<shortBundle>@{root_nspace}(?P<shortBundle_bundle>{bundles})Bundle/(?P<shortBundle_path>[^()"'\s, {{}}]*))"#,
+            r#"|(?P<short>@{root_nspace}(?P<short_bundle>{bundles})/(?P<short_path>[^()"'\s,{{}}]*))"#,
             // r#"|(?P<std>['"][^ \n\t\v\r:;`]*?(?P<std_bundle>{bundles})Bundle[^ \n\t\v\r:;`]*?['"])"#
             r#"|(?P<std>['"](?P<root>%kernel\.project_dir%/)?(?P<path>(?:(?:\.|\.\.|[A-Za-z\-_0-9]*)/)+)(?P<file_name>[A-Za-z\-_0-9.]*)(?::(?P<action>[A-Za-z\-_0-9]*))?['"])"#,
         ),

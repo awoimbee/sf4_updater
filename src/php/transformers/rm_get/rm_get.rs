@@ -224,5 +224,5 @@ fn some_parent_has_constructor(php: &Php, class: &str) -> Result<bool, Box<dyn s
             return Ok(true);
         }
     }
-    return Ok(false);
+    Ok(false)
 }

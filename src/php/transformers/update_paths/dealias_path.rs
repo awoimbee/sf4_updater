@@ -4,14 +4,14 @@ use std::fs;
 
 /// Returns a strign containing the full path or the path relative
 /// to the curent executable
-pub fn dealias_path(path: &regex::Captures<'_>) -> Result<String, &'static str> {
-    return match () {
+pub fn dealias_path(path: &regex::Captures<'_>, file_loc: &str) -> Result<String, &'static str> {
+    match () {
         _ if path.name("colon").is_some() => dealias_colon_path(path),
         _ if path.name("shortBundle").is_some() => dealias_shortbundle_path(path),
         _ if path.name("short").is_some() => dealias_short_path(path),
-        _ if path.name("std").is_some() => dealias_std_path(path),
+        _ if path.name("std").is_some() => dealias_std_path(path, file_loc),
         _ => Err("Unknown path format"),
-    };
+    }
 }
 
 /// Also accepts `path/to/controller:action`
@@ -56,13 +56,13 @@ fn bundle_path(bundle_name: &str) -> Result<&str, &'static str> {
                 let d_path = dir.path().to_str().unwrap().to_owned();
                 b_map.insert(b_name.to_owned(), d_path);
             }
-            return b_map;
+            b_map
         };
     }
-    return match BUNDLE_FDS.get(bundle_name) {
+    match BUNDLE_FDS.get(bundle_name) {
         Some(p) => Ok(p),
         None => Err("Could not get path of bundle: Unknown bundle"),
-    };
+    }
 }
 
 /// Returns path from colon alias
@@ -105,6 +105,10 @@ fn dealias_short_path(bundle_re: &regex::Captures<'_>) -> Result<String, &'stati
     Ok(path)
 }
 
-fn dealias_std_path(path_cap: &regex::Captures<'_>) -> Result<String, &'static str> {
-    Ok(format!("Megapute, Octopute, Hydropute, Triplepute, Aquapute"))
+fn dealias_std_path(path_cap: &regex::Captures<'_>, loc: &str) -> Result<String, &'static str> {
+    if path_cap[0].starts_with("./src") {}
+
+    Ok(
+        path_cap[0].to_owned(), // "Megapute, Octopute, Hydropute, Triplepute, Aquapute"
+    )
 }
