@@ -17,7 +17,7 @@ use std::path::Path;
 use std::fs::create_dir_all;
 
 /// Returns new path
-pub fn update_controller_path(path: &str, fm: &mut FileMover) -> Result<String, &'static str> {
+pub fn update_controller_path(path: &str, context: &str) -> Result<String, &'static str> {
     // un 'Controller' a ninguna 'Action' es posible pero son pajero
 
     let sep_i = path.rfind(':').unwrap_or(path.len());
@@ -38,12 +38,21 @@ pub fn update_controller_path(path: &str, fm: &mut FileMover) -> Result<String, 
     let nspace_cap = RE_NAMESPACE.captures(ft.reader()).unwrap(); // /!\ danger
     let classn_cap = RE_CLASS.captures(ft.reader()).unwrap();
 
-    let new_path = format!(
+    let mut new_path = format!(
         "{}\\{}{}",
         nspace_cap.get(1).unwrap().as_str(),
         classn_cap.name("name").unwrap().as_str(),
         action,
     );
-
+    if context.ends_with(".twig") {
+        let mut tmp = String::new();
+        for c in new_path.bytes() {
+            match c as char {
+                '\\' => tmp.push_str("\\\\"),
+                _ => tmp.push(c as char),
+            };
+        }
+        new_path = tmp;
+    }
     Ok(new_path)
 }

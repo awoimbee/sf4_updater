@@ -7,6 +7,8 @@
 extern crate clap;
 #[macro_use]
 extern crate lazy_static;
+#[macro_use]
+extern crate bitflags;
 
 mod conf;
 mod f_find;
@@ -27,6 +29,8 @@ pub struct Globals {
     pub entity_search_dirs: Vec<(String, String)>,
     pub dealiaser_additionals: Vec<(String, String)>,
     pub bundles: Vec<(String, String)>, // (name, path)
+
+
 }
 
 lazy_static! {
@@ -46,7 +50,7 @@ fn main() {
         (@arg CONF_FILE: +takes_value --conf_file -c "Conf. file to use")
         (@arg DEALIAS_REP: --dealias_getrepo -A "Transformer: dialias `getRopository()` statements")
         (@arg RM_GET: --rm_get -B "Transformer: remove `container->get()` statements")
-        (@arg DEALIAS_PATHS: --dealias_paths -C "Transformer: remove path aliases")
+        (@arg DEALIAS_PATHS: +takes_value --dealias_paths -C "Transformer: 1: moe templates 2: update contrls paths")
     ).get_matches();
 
     let mut php = php::Php::new();
@@ -63,6 +67,7 @@ fn main() {
         php.rm_get();
     }
     if arg_matches.is_present("DEALIAS_PATHS") {
-        php.update_paths();
+        let update_what: u32 = arg_matches.value_of("DEALIAS_PATHS").unwrap().parse().unwrap();
+        php.update_paths(update_what);
     }
 }

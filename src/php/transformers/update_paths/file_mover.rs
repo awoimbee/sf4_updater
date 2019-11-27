@@ -5,7 +5,16 @@ use std::collections::HashMap;
 use std::process::Command;
 use std::str::from_utf8;
 
+bitflags! {
+    pub struct MoveWhat: u32 {
+        const NONE = 0;
+        const TEMPLATES = 0b00000001;
+        const CONTROLLERS = 0b00000010;
+    }
+}
+
 pub struct FileMover {
+    pub which_files: MoveWhat, // this is disgusting
     move_ops: HashMap<String, String>, // (new, old)
 }
 
@@ -20,6 +29,7 @@ impl FileMover {
 
     pub fn new() -> Self {
         FileMover {
+            which_files: MoveWhat::NONE,
             move_ops: HashMap::new(),
         }
     }

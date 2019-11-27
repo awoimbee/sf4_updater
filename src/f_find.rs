@@ -3,6 +3,12 @@ use std::fs;
 
 // If performance becomes an issue: create FileFinder object & construct index
 
+pub fn allowed_dir(dname: &str) -> bool {
+    !dname.ends_with("/.git")
+    && !dname.ends_with("/vendor")
+    && !dname.ends_with("/var/cache")
+}
+
 /// finds files inside `root` w/ names that matches
 /// And call `callback` on them.
 pub fn f_find(root: &str, regex_match: &'static str, mut callback: impl FnMut(&str)) {
@@ -37,7 +43,7 @@ pub fn f_find(root: &str, regex_match: &'static str, mut callback: impl FnMut(&s
                 }
             };
             match () {
-                _ if s_meta.is_dir() => dir_stack.push(s),
+                _ if s_meta.is_dir() && allowed_dir(&s) => dir_stack.push(s),
                 _ if s_meta.is_file() && reg.is_match(&s) => callback(&s),
                 _ => (),
             };

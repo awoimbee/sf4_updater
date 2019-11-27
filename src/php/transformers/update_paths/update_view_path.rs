@@ -39,7 +39,7 @@ pub fn update_view_path(mut path: &str, fm: &mut FileMover) -> Result<String, &'
 
     if is_dir {
         f_find(path, r".*\.twig", |p| {
-            drop(super::update_path(p, fm));
+            drop(super::update_path(p, "", fm));
         }); // mhhh
     }
 
@@ -49,10 +49,8 @@ pub fn update_view_path(mut path: &str, fm: &mut FileMover) -> Result<String, &'
     let file = pcap.name("file").unwrap().as_str();
     let rel_sf_dirs = "templates/";
 
-    let new_path = format!(
-        "{}{}{}/{}/{}",
-        G.project_root, rel_sf_dirs, bundle, rel_path, file
-    );
+    let new_path_part = format!("{}/{}/{}", bundle, rel_path, file);//.to_ascii_lowercase();
+    let new_path = format!("{}{}{}", G.project_root, rel_sf_dirs, new_path_part);
 
     let path_rel = &path[G.project_root.len()..];
     let new_path_rel = &new_path[G.project_root.len()..];
