@@ -17,24 +17,39 @@ use std::path::Path;
 use std::fs::create_dir_all;
 
 /// Returns new path
-pub fn update_controller_path(path: &str, context: &str) -> Result<String, &'static str> {
+pub fn update_controller_path(fpath: &str, context: &str) -> Result<String, &'static str> {
     // un 'Controller' a ninguna 'Action' es posible pero son pajero
 
-    let sep_i = path.rfind(':').unwrap_or(path.len());
-    let action = match path.get(sep_i..) {
-        Some(a) => format!(":{}Action", a),
-        None => String::new(),
-    };
-    let path = &path[..sep_i];
+    let sep_i = fpath.rfind(':').unwrap_or(fpath.len());
+    let path = &fpath[..sep_i];
 
     if !Path::new(path).exists() {
         return Err("Controller doesn't exist");
     }
-
     let ft = match FileTransformer::new(path) {
         Some(ft) => ft,
         None => return Err("Could not open file"),
     };
+    let r = ft.reader();
+
+
+    let action = match fpath.get(sep_i + 1..) {
+        Some(a) => {
+                if let Some(_) = r.find(&format!("public function {}(", a)) {
+                    format!("::{}", a)
+                } else {
+                    let a = format!("{}Action", a);
+                    if let Some(_) = r.find(&format!("public function {}(", a)) {
+                        format!("::{}", a)
+                    } else {
+                        return Err("Method doesn't exist !");
+                    }
+                }
+            },
+        None => String::new(),
+    };
+
+
     let nspace_cap = RE_NAMESPACE.captures(ft.reader()).unwrap(); // /!\ danger
     let classn_cap = RE_CLASS.captures(ft.reader()).unwrap();
 

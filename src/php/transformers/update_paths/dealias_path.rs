@@ -106,9 +106,8 @@ fn dealias_short_path(bundle_re: &regex::Captures<'_>) -> Result<String, &'stati
 }
 
 fn dealias_std_path(path_cap: &regex::Captures<'_>, loc: &str) -> Result<String, &'static str> {
-    if path_cap[0].starts_with("./src") {}
+    // if path_cap[0].starts_with("./src") {}
 
-    Ok(
-        path_cap[0].to_owned(), // "Megapute, Octopute, Hydropute, Triplepute, Aquapute"
-    )
+    Ok(path_cap[0].to_owned())
+    // "Megapute, Octopute, Hydropute, Triplepute, Aquapute"
 }
