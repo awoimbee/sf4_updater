@@ -49,7 +49,7 @@ pub fn update_view_path(mut path: &str, fm: &mut FileMover) -> Result<String, &'
     let file = pcap.name("file").unwrap().as_str();
     let rel_sf_dirs = "templates/";
 
-    let new_path_part = format!("{}/{}/{}", bundle, rel_path, file);//.to_ascii_lowercase();
+    let new_path_part = format!("{}/{}/{}", bundle, rel_path, file); //.to_ascii_lowercase();
     let new_path = format!("{}{}{}", G.project_root, rel_sf_dirs, new_path_part);
 
     let path_rel = &path[G.project_root.len()..];

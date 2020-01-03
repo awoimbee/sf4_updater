@@ -1,25 +1,10 @@
-// use crate::php::Php;
-// // use crate::php::resolve_namespace::*;
-// // use crate::php::transformers::FileTransformer;
-// // use colored::*;
-// use super::super::FileTransformer;
-// use super::SHELL_COMMANDS;
-
 use super::super::php::RE_CLASS;
 use super::super::php::RE_NAMESPACE;
 use super::super::FileTransformer;
-use super::FileMover;
-// use crate::f_find::f_find;
-use crate::G;
-use regex::Regex;
 use std::path::Path;
-
-use std::fs::create_dir_all;
 
 /// Returns new path
 pub fn update_controller_path(fpath: &str, context: &str) -> Result<String, &'static str> {
-    // un 'Controller' a ninguna 'Action' es posible pero son pajero
-
     let sep_i = fpath.rfind(':').unwrap_or(fpath.len());
     let path = &fpath[..sep_i];
 
@@ -32,26 +17,33 @@ pub fn update_controller_path(fpath: &str, context: &str) -> Result<String, &'st
     };
     let r = ft.reader();
 
-
+    // un 'Controller' a ninguna 'Action' es posible
     let action = match fpath.get(sep_i + 1..) {
         Some(a) => {
+            if let Some(_) = r.find(&format!("public function {}(", a)) {
+                format!("::{}", a)
+            } else {
+                let a = format!("{}Action", a);
                 if let Some(_) = r.find(&format!("public function {}(", a)) {
                     format!("::{}", a)
                 } else {
-                    let a = format!("{}Action", a);
-                    if let Some(_) = r.find(&format!("public function {}(", a)) {
-                        format!("::{}", a)
-                    } else {
-                        return Err("Method doesn't exist !");
-                    }
+                    return Err("Method doesn't exist !");
                 }
-            },
+            }
+        }
         None => String::new(),
     };
 
-
-    let nspace_cap = RE_NAMESPACE.captures(ft.reader()).unwrap(); // /!\ danger
-    let classn_cap = RE_CLASS.captures(ft.reader()).unwrap();
+    let nspace_cap = if let Some(s) = RE_NAMESPACE.captures(ft.reader()) {
+        s
+    } else {
+        return Err("No namespace declaration");
+    };
+    let classn_cap = if let Some(s) = RE_CLASS.captures(ft.reader()) {
+        s
+    } else {
+        return Err("No class name");
+    };
 
     let mut new_path = format!(
         "{}\\{}{}",

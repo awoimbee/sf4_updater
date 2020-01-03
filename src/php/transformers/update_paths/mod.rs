@@ -81,17 +81,15 @@ fn foreach_file(file: &str, fm: &mut FileMover) {
 }
 
 fn update_path(path: &str, context: &str, fm: &mut FileMover) -> Result<String, &'static str> {
-    if fm.which_files.contains(MoveWhat::CONTROLLERS)
-    && path.contains("/Controller/") {
+    if fm.which_files.contains(MoveWhat::CONTROLLERS) && path.contains("/Controller/") {
         return update_controller_path(&path, context);
     }
-    if fm.which_files.contains(MoveWhat::TEMPLATES)
-    && path.contains("Resources/views") {
+    if fm.which_files.contains(MoveWhat::TEMPLATES) && path.contains("Resources/views") {
         return update_view_path(&path, fm);
     }
 
     // println!("path not recognised: {}", path);
-    return Err("Path not recognised");
+    Err("Path not recognised")
     // Ok(path.to_owned())
 }
 

@@ -9,7 +9,7 @@ pub mod resolve_namespace;
 pub mod transformers;
 
 const RSTR_CLASS: &str =
-    r"\n(?:abstract )?class (?P<name>[^ \n]*)(?: extends (?P<parent>[^ \n]*))?";
+    r"\n(?:abstract |final |static )?class (?P<name>[^ \n]*)(?: extends (?P<parent>[^ \n]*))?";
 const RSTR_NAMESPACE: &str = r"\nnamespace ([^ ;]*);\n"; // .get(1): namespace;
 const RSTR_ALL_USE: &str = r"(?:\nuse[^;]*;)+"; // CAP WHOLE GROUP
 const RSTR_USE: &str = r"\nuse (?P<class>[^ ;]*)(?: as (?P<alias>[^ ;]*))?;";

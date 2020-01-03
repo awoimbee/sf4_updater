@@ -8,13 +8,13 @@ use std::str::from_utf8;
 bitflags! {
     pub struct MoveWhat: u32 {
         const NONE = 0;
-        const TEMPLATES = 0b00000001;
-        const CONTROLLERS = 0b00000010;
+        const TEMPLATES = 0b01;
+        const CONTROLLERS = 0b10;
     }
 }
 
 pub struct FileMover {
-    pub which_files: MoveWhat, // this is disgusting
+    pub which_files: MoveWhat,         // this is disgusting
     move_ops: HashMap<String, String>, // (new, old)
 }
 

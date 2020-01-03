@@ -5,8 +5,9 @@ use std::fs;
 
 pub fn allowed_dir(dname: &str) -> bool {
     !dname.ends_with("/.git")
-    && !dname.ends_with("/vendor")
-    && !dname.ends_with("/var/cache")
+        && !dname.ends_with("/vendor")
+        && !dname.ends_with("/var/cache")
+        && !dname.ends_with("/.psalm")
 }
 
 /// finds files inside `root` w/ names that matches

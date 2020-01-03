@@ -29,8 +29,6 @@ pub struct Globals {
     pub entity_search_dirs: Vec<(String, String)>,
     pub dealiaser_additionals: Vec<(String, String)>,
     pub bundles: Vec<(String, String)>, // (name, path)
-
-
 }
 
 lazy_static! {
@@ -67,7 +65,11 @@ fn main() {
         php.rm_get();
     }
     if arg_matches.is_present("DEALIAS_PATHS") {
-        let update_what: u32 = arg_matches.value_of("DEALIAS_PATHS").unwrap().parse().unwrap();
+        let update_what: u32 = arg_matches
+            .value_of("DEALIAS_PATHS")
+            .unwrap()
+            .parse()
+            .unwrap();
         php.update_paths(update_what);
     }
 }
