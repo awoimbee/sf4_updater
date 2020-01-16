@@ -29,7 +29,9 @@ impl FileTransformer {
         match f.read_to_string(&mut contents) {
             Ok(_) => (),
             Err(e) => {
-                eprintln!("Could not read {} ({})", file_name, e);
+                if e.kind() != std::io::ErrorKind::InvalidData {
+                    eprintln!("Could not read {} ({})", file_name, e);
+                }
                 return None;
             }
         };

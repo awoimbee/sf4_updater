@@ -42,8 +42,8 @@ impl php::Php {
                             println!(
                                 "{}",
                                 format!(
-                                    "\t\tName conflict for {} ({}) in {}",
-                                    entity_name, entity_full_name, class.path
+                                    "\t\tName conflict for {} ({}) in {} ({})",
+                                    entity_name, entity_full_name, class.path, use_entity
                                 )
                                 .red()
                             );
